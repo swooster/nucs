@@ -1,0 +1,21 @@
+[package]
+name = "nucs"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/swooster/nucs"
+readme = "README.md"
+description = "Library for working with nucleotide and amino acid sequences"
+keywords = ["nucleotide", "amino-acid", "dna", "peptide"]
+categories = ["science::bioinformatics::genomics"]
+authors = [
+    "Steve Wooster <s.f.m.wooster+nucs@gmail.com>",
+]
+rust-version = "1.88"
+edition = "2024"
+
+[features]
+default = []
+
+unsafe = []
+
+[dependencies]
