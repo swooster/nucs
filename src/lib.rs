@@ -1,3 +1,7 @@
+#![warn(missing_docs)]
+#![warn(clippy::pedantic)]
+#![cfg_attr(not(feature = "unsafe"), forbid(unsafe_code))]
+
 //! [`nucs`](crate) is a library for working with nucleotide and amino acid sequences.
 //!
 //! The goal is to supply useful tools for working with DNA/peptides while attempting to
@@ -95,10 +99,6 @@
 //! * **`unsafe`:** (highly experimental) This enables casting between [`&[Nuc]`](crate::Nuc)
 //!   and [`&[AmbiNuc]`](crate::AmbiNuc). This is not yet properly tested with Miri, so use at
 //!   your own risk.
-
-#![warn(missing_docs)]
-#![warn(clippy::pedantic)]
-#![cfg_attr(not(feature = "unsafe"), forbid(unsafe_code))]
 
 #[doc = include_str!("../README.md")]
 #[cfg(doctest)]
