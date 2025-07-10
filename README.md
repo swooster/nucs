@@ -18,16 +18,19 @@ Its design is heavily based off of my experience using and helping maintain
 ```rust
 use nucs::{Dna, DnaSlice, NCBI1, Nuc, Peptide};
 
-let mut dna: Dna = "ACACACATATCTTACGCTTAGGAAATCTGACCCGAACCAACCATTGATGAG".parse().unwrap();
+let mut dna: Dna = "ACACACATATCTTACGCTTAGGAAATCTGACCCGAA"
+    .parse().unwrap();
 
 let codons = dna[4..].as_codons_mut();
-// Selects this: v---------------------------------------------------------v
-//       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG AAC CAA CCA TTG ATG    AG
+// Selects this: v-------------------------------------v
+//       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG    AA
 
 codons[3..8].revcomp();
 // Reverse complements this: v-----------------v
-//       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG AAC CAA CCA TTG ATG    AG
+//       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG    AA
 // Changing it to:           AGA TTT CCT AAG CGT
+
+dna.extend(const { Nuc::lit(b"CCAACCATTGATGAG") });
 
 let peptide: Peptide = dna.translate(NCBI1).collect();
 assert_eq!(peptide.to_string(), "THIS*IS*A*PEPTIDE");
@@ -39,8 +42,10 @@ via iterators:
 use std::collections::VecDeque;
 use nucs::{DnaIter, NCBI1, Nuc, Peptide, Seq};
 
-let mut dna: Seq<VecDeque<Nuc>> = "ACTCTATCACCTACTCAGAGCGCTCCACCGCGCGTGT".parse().unwrap();
-// Prepend things to the `VecDeque`; it's no longer stored contiguously.
+let mut dna: Seq<VecDeque<Nuc>> =
+    "ACTCTATCACCTACTCAGAGCGCTCCACCGCGCGTGT".parse().unwrap();
+// Prepend things to the `VecDeque`;
+// it's no longer stored contiguously.
 for _ in 0..4 {
     dna.push_front(Nuc::C);
 }
@@ -60,10 +65,10 @@ Ambiguous nucleotides and amino acids are supported:
 use nucs::{AmbiAmino, AmbiNuc, AmbiPeptide, DnaSlice, NCBI1};
 use AmbiNuc::{A, C};
 
-// `lit` returns an array without allocating
 let mut dna = AmbiNuc::lit(b"TTAGCGGACGATTAT");
 
-// Because `dna` contains ambiguous nucleotides, translating it produces an ambiguous peptide
+// Because `dna` contains ambiguous nucleotides,
+// translating it produces an ambiguous peptide
 let peptide: AmbiPeptide = dna.translate(NCBI1).collect();
 assert_eq!(peptide.to_string(), "LADDY");
 
