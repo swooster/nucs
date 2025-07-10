@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+* Fix documentation on docs.rs.
+
 ## Version 0.1.0 (2025-07-10)
 
 * First release!

@@ -1,6 +1,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![cfg_attr(not(feature = "unsafe"), forbid(unsafe_code))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! [`nucs`](crate) is a library for working with nucleotide and amino acid sequences.
 //!
