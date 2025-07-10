@@ -161,8 +161,8 @@ pub trait DnaIter: Iterator {
     /// ```
     /// use nucs::{DnaIter, NCBI1, Nuc, Seq};
     ///
-    /// let peptide: Seq<Vec<_>>
-    ///     = Nuc::lit(b"TATGCGAGAAAC").into_iter().translate(NCBI1).collect();
+    /// let peptide: Seq<Vec<_>> =
+    ///     Nuc::lit(b"TATGCGAGAAAC").into_iter().translate(NCBI1).collect();
     /// assert_eq!(peptide.to_string(), "YARN");
     /// ```
     fn translate<N, G>(self, genetic_code: G) -> Translated<G, Codons<N, Self>>
