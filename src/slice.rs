@@ -140,7 +140,7 @@ pub trait DnaSlice {
     fn translate<G: GeneticCode>(
         &self,
         genetic_code: G,
-    ) -> Translated<G, Codons<Self::Nuc, std::slice::Iter<Self::Nuc>>> {
+    ) -> Translated<G, Codons<Self::Nuc, std::slice::Iter<'_, Self::Nuc>>> {
         self.as_flat_dna().iter().translate(genetic_code)
     }
 
@@ -157,7 +157,7 @@ pub trait DnaSlice {
     /// assert_eq!(dna.display().to_string(), "CATATTAC");
     /// assert_eq!(format!("{:#4}", dna.display()), "CATA\nTTAC");
     /// ```
-    fn display(&self) -> crate::iter::Display<std::slice::Iter<Self::Nuc>> {
+    fn display(&self) -> crate::iter::Display<std::slice::Iter<'_, Self::Nuc>> {
         self.as_flat_dna().iter().display()
     }
 
