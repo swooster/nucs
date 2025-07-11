@@ -1,6 +1,8 @@
 name: CI
 
 on:
+  push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -57,14 +59,22 @@ jobs:
     - name: Cargo doc
       run: cargo doc --features "${{matrix.features}}"
 
-  docsrs:
-    name: Check docs.rs
+  nightly:
+    name: docs.rs and Miri
     timeout-minutes: 5
     runs-on: ubuntu-latest
     env:
       RUSTDOCFLAGS: -Dwarnings
+      MIRIFLAGS: -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check -Zrandomize-layout
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
       - uses: dtolnay/install@cargo-docs-rs
-      - run: cargo docs-rs
+      - name: Check docs.rs build
+        run: cargo docs-rs
+      - name: Setup Miri
+        run: cargo miri setup
+      - name: Run Miri
+        run: cargo miri test --features unsafe

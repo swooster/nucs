@@ -671,6 +671,7 @@ mod tests {
         assert_eq!(dna, Nuc::lit(b"AGTC"));
     }
 
+    #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
     #[test]
     fn revcomp_is_involution() {
         for dna in all_dna::<Nuc>().take(10000) {
@@ -682,6 +683,7 @@ mod tests {
         }
     }
 
+    #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
     #[test]
     fn revcomp_matches_reverse_and_complement() {
         // Iterator revcomp isn't trivial, so compare against something that is
