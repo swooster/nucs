@@ -97,9 +97,8 @@
 //!
 //! # Features
 //!
-//! * **`unsafe`:** (highly experimental) This enables casting between [`&[Nuc]`](crate::Nuc)
-//!   and [`&[AmbiNuc]`](crate::AmbiNuc). This is not yet properly tested with Miri, so use at
-//!   your own risk.
+//! * **`unsafe`:** (experimental) This enables casting between [`&[Nuc]`](crate::Nuc)
+//!   and [`&[AmbiNuc]`](crate::AmbiNuc).
 
 #[doc = include_str!("../README.md")]
 #[cfg(doctest)]
