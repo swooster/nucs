@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+
+  setup:
+    name: Setup
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    outputs:
+      rust-versions: ${{ steps.determine-rust-versions.outputs.rust-versions }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - name: Determine supported rust versions
+      id: determine-rust-versions
+      run: |
+        # Produce JSON list of supported versions, e.g. ["1.88","1.89","1.90"]
+        # Rust should always be 1.X; find the minor version component of...
+        CRATE_VERSION=$(cargo read-manifest | jq -r '.rust_version | split(".")[1]')
+        TOOLCHAIN_VERSION=$(rustc --version | grep -oP '(?<=^rustc 1\.)\d+')
+        VERSION_RANGE='["1.'$(seq -s'","1.' "$CRATE_VERSION" "$TOOLCHAIN_VERSION")'"]'
+        echo "Supported rust versions: $VERSION_RANGE"
+        echo "rust-versions=$VERSION_RANGE" >> $GITHUB_OUTPUT
+
+  tests:
+    name: Tests
+    needs: setup
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust_version: ${{fromJson(needs.setup.outputs.rust-versions)}}
+        features: [ "default", "unsafe" ]
+    env:
+      RUSTDOCFLAGS: -Dwarnings
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{matrix.rust_version}}
+        components: clippy,rustfmt
+    - name: Check formatting
+      run: cargo fmt --check --all
+    - name: Clippy # ensure nothing depends on test-only code
+      run: cargo clippy --features "${{matrix.features}}" -- --deny warnings
+    - name: Clippy (with tests) # find code-smells in tests
+      run: cargo clippy --features "${{matrix.features}}" --tests -- --deny warnings
+    - name: Run tests
+      run: cargo test --release --features ${{matrix.features}}
+    - name: Cargo doc
+      run: cargo doc --features "${{matrix.features}}"
+
+  docsrs:
+    name: Check docs.rs
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -Dwarnings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/install@cargo-docs-rs
+      - run: cargo docs-rs
