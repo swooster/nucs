@@ -1,13 +1,14 @@
 # `nucs`
 
 [![Crates.io Version](https://img.shields.io/crates/v/nucs.svg)](https://crates.io/crates/nucs)
+[![CI](https://github.com/swooster/nucs/actions/workflows/ci.yml/badge.svg?event=push)](https://github.com/swooster/nucs/actions/workflows/ci.yml)
 [![Documentation](https://docs.rs/nucs/badge.svg)](https://docs.rs/nucs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE-MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE-APACHE)
 
 This is a personal experiment with an API for working with nucleotide and amino acid sequences.
-Its design is heavily based off of my experience using and helping maintain
-<https://github.com/SecureDNA/quickdna>. My goals were to design an API that...
+Its design is based off of my experience using and helping maintain
+<https://github.com/SecureDNA/quickdna>. My goals were to make an API that...
 
 * ...is solely focused on Rust.
 * ...integrates with the Rust `std` library (e.g. representing codons as `[Nuc; 3]` allows the
