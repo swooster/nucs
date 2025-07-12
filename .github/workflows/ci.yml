@@ -20,14 +20,20 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
+    - name: Check crate version matches RELEASES.md
+      run: |
+        CRATE_VERSION=$(cargo read-manifest | jq -r .version)
+        RELEASES_VERSION=$(grep -oPm1 '(?<=^## Version )\S+' RELEASES.md)
+        echo crate=$CRATE_VERSION releases=$RELEASES_VERSION
+        test "$CRATE_VERSION" = "$RELEASES_VERSION"
     - name: Determine supported rust versions
       id: determine-rust-versions
       run: |
         # Produce JSON list of supported versions, e.g. ["1.88","1.89","1.90"]
         # Rust should always be 1.X; find the minor version component of...
-        CRATE_VERSION=$(cargo read-manifest | jq -r '.rust_version | split(".")[1]')
+        REQUIRED_VERSION=$(cargo read-manifest | jq -r '.rust_version | split(".")[1]')
         TOOLCHAIN_VERSION=$(rustc --version | grep -oP '(?<=^rustc 1\.)\d+')
-        VERSION_RANGE='["1.'$(seq -s'","1.' "$CRATE_VERSION" "$TOOLCHAIN_VERSION")'"]'
+        VERSION_RANGE='["1.'$(seq -s'","1.' "$REQUIRED_VERSION" "$TOOLCHAIN_VERSION")'"]'
         echo "Supported rust versions: $VERSION_RANGE"
         echo "rust-versions=$VERSION_RANGE" >> $GITHUB_OUTPUT
 
