@@ -46,7 +46,7 @@ use crate::error::ParseSeqError;
 /// # }
 /// ```
 ///
-/// # Requirements and limitations:
+/// # Requirements and limitations
 ///
 /// [`Seq<T>`] reads from its collection via [`&T::into_iter`](IntoIterator::into_iter), and
 /// expects yielded items to be [`&impl Symbol`](Symbol). This means it works with [`Vec`],
@@ -59,6 +59,11 @@ use crate::error::ParseSeqError;
 /// what type of [`Symbol`] (e.g. [`Nuc`](crate::Nuc) vs [`Amino`](crate::Amino)) to expect;
 /// [`FromIterator`] cannot be relied on, because a single collection may support multiple
 /// [`FromIterator`] implementations.
+///
+/// # Features
+///
+/// * **`serde`:** When enabled, [`Seq<T>`] is serializable (as a string) whenever it has a
+///   [`Display`] impl, and deserializable whenever it has a [`FromStr`] impl.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Seq<T>(pub T);
 
@@ -141,4 +146,82 @@ fn iter_symbols<S: Symbol>(s: &str) -> impl Iterator<Item = Result<S, ParseSeqEr
                 pos,
             })
         })
+}
+
+#[cfg(feature = "serde")]
+mod serde_impls {
+    use std::fmt::{Display, Formatter};
+    use std::marker::PhantomData;
+
+    use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor};
+
+    use super::{Seq, Symbol};
+
+    impl<T> Serialize for Seq<T>
+    where
+        Self: Display,
+    {
+        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            serializer.serialize_str(&self.to_string())
+        }
+    }
+
+    impl<'de, T, U> Deserialize<'de> for Seq<T>
+    where
+        // Need IntoIterator bound to infer type of contained element
+        for<'a> &'a T: IntoIterator<Item = &'a U>,
+        T: FromIterator<U>,
+        U: Symbol,
+    {
+        fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            deserializer.deserialize_str(SeqVisitor(PhantomData))
+        }
+    }
+
+    struct SeqVisitor<T>(PhantomData<T>);
+
+    impl<T, U> Visitor<'_> for SeqVisitor<T>
+    where
+        // Need IntoIterator bound to infer type of contained element
+        for<'a> &'a T: IntoIterator<Item = &'a U>,
+        T: FromIterator<U>,
+        U: Symbol,
+    {
+        type Value = Seq<T>;
+
+        fn expecting(&self, f: &mut Formatter) -> std::fmt::Result {
+            write!(f, "a string of {}s", U::NAME)
+        }
+
+        fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+            v.parse().map_err(E::custom)
+        }
+
+        // TODO: Maybe also accept sequences of symbols?
+    }
+}
+
+#[cfg(all(test, feature = "serde"))]
+mod serde_tests {
+    use crate::Dna;
+
+    #[test]
+    fn dna_roundtrip() {
+        let original_dna: Dna = "CATTAG".parse().unwrap();
+        let json = serde_json::to_string(&original_dna).unwrap();
+        assert_eq!(json, "\"CATTAG\"");
+        let deserialized_dna: Dna = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized_dna, original_dna);
+    }
+
+    #[test]
+    fn invalid_dna() {
+        let err = serde_json::from_str::<Dna>("[]").unwrap_err();
+        assert!(err.to_string().contains("expected a string of nucleotides"));
+        let err = serde_json::from_str::<Dna>("\"CATXTAG\"").unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("invalid nucleotide 'X' at position 3")
+        );
+    }
 }

@@ -39,7 +39,7 @@ jobs:
     strategy:
       matrix:
         rust_version: ${{fromJson(needs.setup.outputs.rust-versions)}}
-        features: [ "default", "unsafe" ]
+        features: [ "default", "serde", "unsafe", "all" ]
     env:
       RUSTDOCFLAGS: -Dwarnings
     steps:
@@ -77,4 +77,4 @@ jobs:
       - name: Setup Miri
         run: cargo miri setup
       - name: Run Miri
-        run: cargo miri test --features unsafe
+        run: cargo miri test --features all

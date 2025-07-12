@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+* Add `serde` integration for `Seq<T>`.
+
 ## Version 0.1.1 (2025-07-10)
 
 * Fix documentation on docs.rs.
