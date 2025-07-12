@@ -64,6 +64,13 @@ jobs:
       run: cargo test --release --features ${{matrix.features}}
     - name: Cargo doc
       run: cargo doc --features "${{matrix.features}}"
+    - name: Repo is clean # mainly prevents forgetting to commit Cargo.lock
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+            echo Dirty files:
+            git -c color.status=always status --short
+            exit 1
+        fi
 
   nightly:
     name: docs.rs and Miri
