@@ -97,6 +97,7 @@
 //!
 //! # Features
 //!
+//! * **`serde`:** Enables [`serde`](https://crates.io/crates/serde) integration for [`Seq<T>`].
 //! * **`unsafe`:** (experimental) This enables casting between [`&[Nuc]`](crate::Nuc)
 //!   and [`&[AmbiNuc]`](crate::AmbiNuc).
 

@@ -85,7 +85,6 @@ assert_eq!(peptide.to_string(), "JABBY");
 
 * Packing
 * FASTA parsing
-* `serde` integration
 * Expansion of ambiguous k-mers into concrete k-mers
 * Base canonicalization
 * Unsafe casts for `Vec` and `Arc`
