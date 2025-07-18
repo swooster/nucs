@@ -110,7 +110,7 @@ mod nuc;
 mod seq;
 mod symbol;
 
-#[cfg(any(feature = "unsafe", all(doc, not(doctest))))]
+#[cfg(feature = "unsafe")]
 #[cfg_attr(docsrs, doc(cfg(feature = "unsafe")))]
 pub mod casts;
 pub mod error;
