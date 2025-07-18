@@ -4,9 +4,9 @@ use crate::iter::{Codons, Translated};
 use crate::translation::GeneticCode;
 use crate::{DnaIter, Nucleotide};
 
-#[cfg(any(feature = "unsafe", doc))]
+#[cfg(feature = "unsafe")]
 use crate::symbol::sealed::Sealed;
-#[cfg(any(feature = "unsafe", doc))]
+#[cfg(feature = "unsafe")]
 use crate::{AmbiNuc, Nuc};
 
 /// Helpers for working with slices of [`Nucleotide`]s.
@@ -177,7 +177,7 @@ pub trait DnaSlice {
     /// let dna = Nuc::lit(b"CATATTAC");
     /// assert_eq!(dna.as_ambi_nucs(), AmbiNuc::lit(b"CATATTAC"));
     /// ```
-    #[cfg(any(feature = "unsafe", all(doc, not(doctest))))]
+    #[cfg(feature = "unsafe")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unsafe")))]
     fn as_ambi_nucs(&self) -> &[AmbiNuc] {
         Self::Nuc::as_ambi_nucs(self.as_flat_dna())
@@ -204,7 +204,7 @@ pub trait DnaSlice {
     /// let dna = AmbiNuc::lit(b"CATTY");
     /// assert!(dna.to_nucs().is_none());
     /// ```
-    #[cfg(any(feature = "unsafe", all(doc, not(doctest))))]
+    #[cfg(feature = "unsafe")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unsafe")))]
     fn to_nucs(&self) -> Option<&[Nuc]> {
         Self::Nuc::to_nucs(self.as_flat_dna())
@@ -234,7 +234,7 @@ pub trait DnaSlice {
     /// let mut dna = AmbiNuc::lit(b"CATTY");
     /// assert!(dna.to_nucs_mut().is_none());
     /// ```
-    #[cfg(any(feature = "unsafe", all(doc, not(doctest))))]
+    #[cfg(feature = "unsafe")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unsafe")))]
     fn to_nucs_mut(&mut self) -> Option<&mut [Nuc]> {
         Self::Nuc::to_nucs_mut(self.as_flat_dna_mut())
