@@ -139,6 +139,13 @@ pub fn ambi_to_nucs_mut(nucs: &mut [AmbiNuc]) -> Option<&mut [Nuc]> {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Range;
+
+    use proptest::prelude::{Just, ProptestConfig, Strategy, any};
+    use proptest::{prop_compose, prop_oneof, proptest};
+
+    use crate::proptest::{any_ambi_dna, any_dna};
+
     use super::*;
 
     #[test]
@@ -179,5 +186,62 @@ mod tests {
         assert_eq!(buffer, AmbiNuc::lit(b"ACTTAT"));
 
         assert_eq!(ambi_to_nucs_mut(&mut AmbiNuc::lit(b"CATSTAG")), None);
+    }
+
+    // Like any_ambi_dna(...) except convertible to `&[Nuc]` more than half the time.
+    fn often_convertible_dna(size: Range<usize>) -> impl Strategy<Value = Vec<AmbiNuc>> {
+        prop_oneof![
+            any_ambi_dna(size.clone()),
+            any_dna(size).prop_map(|dna| dna.into_iter().map(Into::into).collect()),
+        ]
+    }
+
+    prop_compose! {
+        fn dna_and_index(size: Range<usize>)
+                        (dna in any_dna(size))
+                        (index in 0..dna.len(), dna in Just(dna))
+                        -> (Vec<AmbiNuc>, usize) {
+            (dna.into_iter().map(Into::into).collect(), index)
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            #[cfg(miri)]
+            failure_persistence: None,
+            .. Default::default()
+        })]
+
+        #[test]
+        fn nucs_as_ambi_matches_conversion(dna in any_dna(0..50)) {
+            let expected: Vec<_> = dna.iter().map(|&n| AmbiNuc::from(n)).collect();
+            let ambi_dna = nucs_as_ambi(&dna);
+            assert_eq!(ambi_dna, expected);
+        }
+
+        #[test]
+        fn ambi_to_nucs_matches_conversion(ambi_dna in often_convertible_dna(0..50)) {
+            let expected: Option<Vec<_>> =
+                ambi_dna.iter().map(|&n| Nuc::try_from(n).ok()).collect();
+            let dna = ambi_to_nucs(&ambi_dna);
+            assert_eq!(dna, expected.as_deref());
+        }
+
+        #[test]
+        fn ambi_to_nucs_mut_matches_conversion(mut ambi_dna in often_convertible_dna(0..50)) {
+            let mut expected: Option<Vec<_>> =
+                ambi_dna.iter().map(|&n| Nuc::try_from(n).ok()).collect();
+            let dna = ambi_to_nucs_mut(&mut ambi_dna);
+            assert_eq!(dna, expected.as_deref_mut());
+        }
+
+        #[test]
+        fn ambi_to_nucs_mut_provides_mut_ref(
+            (mut ambi_dna, index) in dna_and_index(1..50),
+            nuc in any::<Nuc>(),
+        ) {
+            ambi_to_nucs_mut(&mut ambi_dna).unwrap()[index] = nuc;
+            assert_eq!(ambi_dna[index], AmbiNuc::from(nuc));
+        }
     }
 }

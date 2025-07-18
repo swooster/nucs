@@ -45,9 +45,11 @@ jobs:
     strategy:
       matrix:
         rust_version: ${{fromJson(needs.setup.outputs.rust-versions)}}
-        features: [ "default", "serde", "unsafe", "all" ]
+        features: [ "default", "proptest", "serde", "unsafe", "all" ]
     env:
       RUSTDOCFLAGS: -Dwarnings
+      # Our tests are pretty fast with release, so might as well crank up the number of proptests
+      PROPTEST_CASES: 1000000
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@master
@@ -78,7 +80,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUSTDOCFLAGS: -Dwarnings
-      MIRIFLAGS: -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check -Zrandomize-layout
+      # Disable isolation so proptest doesn't always run through the same few cases
+      MIRIFLAGS: -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check -Zrandomize-layout -Zmiri-disable-isolation
+      # Miri is slow, so do fewer tries.
+      PROPTEST_CASES: 32
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
