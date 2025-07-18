@@ -495,7 +495,9 @@ impl ExactSizeIterator for AmbiAminoIter {}
 
 #[cfg(test)]
 mod tests {
-    use crate::test_util::all_dna;
+    use proptest::proptest;
+
+    use crate::proptest::any_dna;
     use crate::{Dna, DnaSlice, NCBI1, Nuc, Seq};
 
     use super::*;
@@ -671,23 +673,21 @@ mod tests {
         assert_eq!(dna, Nuc::lit(b"AGTC"));
     }
 
-    #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-    #[test]
-    fn revcomp_is_involution() {
-        for dna in all_dna::<Nuc>().take(10000) {
+    proptest! {
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn revcomp_is_involution(dna in any_dna(0..50)) {
             let mut dna2: Vec<_> = dna.iter().revcomped().revcomped().collect();
             assert_eq!(dna, dna2);
             dna2.iter_mut().revcomp();
             dna2.iter_mut().revcomp();
             assert_eq!(dna, dna2);
         }
-    }
 
-    #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-    #[test]
-    fn revcomp_matches_reverse_and_complement() {
-        // Iterator revcomp isn't trivial, so compare against something that is
-        for mut dna in all_dna::<Nuc>().take(10000) {
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn revcomp_matches_reverse_and_complement(mut dna in any_dna(0..50)) {
+            // Iterator revcomp isn't trivial, so compare against something that is
             let mut expected = dna.clone();
             expected.reverse();
             expected.complement();

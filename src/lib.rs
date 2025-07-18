@@ -97,6 +97,8 @@
 //!
 //! # Features
 //!
+//! * **`proptest`:** Enables [`proptest`](https://crates.io/crates/proptest) integration
+//!   and utils.
 //! * **`serde`:** Enables [`serde`](https://crates.io/crates/serde) integration for [`Seq<T>`].
 //! * **`unsafe`:** (experimental) This enables casting between [`&[Nuc]`](crate::Nuc)
 //!   and [`&[AmbiNuc]`](crate::AmbiNuc).
@@ -115,6 +117,9 @@ mod symbol;
 pub mod casts;
 pub mod error;
 pub mod iter;
+#[cfg(any(feature = "proptest", test))]
+#[cfg_attr(docsrs, doc(cfg(feature = "proptest")))]
+pub mod proptest;
 pub mod slice;
 pub mod translation;
 
@@ -134,56 +139,3 @@ pub type AmbiDna = Seq<Vec<AmbiNuc>>;
 pub type Peptide = Seq<Vec<Amino>>;
 /// Common ambiguous amino acid sequence type
 pub type AmbiPeptide = Seq<Vec<AmbiAmino>>;
-
-#[cfg(test)]
-pub(crate) mod test_util {
-    use crate::{Nuc, Nucleotide};
-
-    // Util for easy comprehensive testing of short DNA sequences
-    pub(crate) fn all_dna<N: Nucleotide>() -> impl Iterator<Item = Vec<N>> {
-        let mut dna = Vec::<N>::new();
-        std::iter::from_fn(move || {
-            for nuc in dna.iter_mut().rev() {
-                let alphabet = N::ALL.iter().cycle();
-                *nuc = *alphabet.skip_while(|&nuc2| nuc != nuc2).nth(1).unwrap();
-                if *nuc != N::ALL[0] {
-                    return Some(dna.clone());
-                }
-            }
-            dna.push(N::ALL[0]);
-            Some(dna.clone())
-        })
-    }
-
-    #[test]
-    fn sanity_check_all_dna_test_util() {
-        use Nuc::{A, C, G, T};
-        let expected = [
-            &[A] as &[_],
-            &[C],
-            &[G],
-            &[T],
-            &[A, A],
-            &[A, C],
-            &[A, G],
-            &[A, T],
-            &[C, A],
-            &[C, C],
-            &[C, G],
-            &[C, T],
-            &[G, A],
-            &[G, C],
-            &[G, G],
-            &[G, T],
-            &[T, A],
-            &[T, C],
-            &[T, G],
-            &[T, T],
-            &[A, A, A],
-            &[A, A, C],
-            &[A, A, G],
-            &[A, A, T],
-        ];
-        assert!(all_dna::<Nuc>().zip(expected).all(|(a, b)| a == b));
-    }
-}

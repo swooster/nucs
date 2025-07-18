@@ -20,7 +20,9 @@ all = ["serde", "unsafe"]
 unsafe = []
 
 [dependencies]
+proptest = { version = "1.7.0", features = ["std"], optional = true }
 serde = { version = "1.0", optional = true }
 
 [dev-dependencies]
+proptest = { version = "1.7.0", features = ["std"] }
 serde_json = "1.0"
