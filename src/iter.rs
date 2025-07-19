@@ -63,14 +63,16 @@ pub trait DnaIter: Iterator {
     /// dna.iter_mut().revcomp();
     /// assert_eq!(dna, Nuc::lit(b"TGTAATC"));
     /// ```
-    fn revcomp<'a, N>(mut self)
+    fn revcomp<N>(mut self)
     where
-        Self: Sized + DoubleEndedIterator<Item = &'a mut N>,
+        Self: Sized + DoubleEndedIterator<Item: AsMut<N>>,
         N: Nucleotide,
     {
-        while let Some(a) = self.next() {
+        while let Some(mut a) = self.next() {
+            let a = a.as_mut();
             *a = a.complement();
-            let Some(b) = self.next_back() else { break };
+            let Some(mut b) = self.next_back() else { break };
+            let b = b.as_mut();
             *a = std::mem::replace(b, *a).complement();
         }
     }
@@ -671,6 +673,25 @@ mod tests {
         let mut dna = Nuc::lit(b"GACT");
         dna.iter_mut().revcomp();
         assert_eq!(dna, Nuc::lit(b"AGTC"));
+    }
+
+    #[test]
+    fn revcomp_calls_as_mut_once_per_nucleotide() {
+        struct SingleUseMut<'a>(Option<&'a mut Nuc>);
+
+        impl AsMut<Nuc> for SingleUseMut<'_> {
+            fn as_mut(&mut self) -> &mut Nuc {
+                self.0.take().unwrap()
+            }
+        }
+
+        // Deliberately doing odd.
+        let mut dna = Nuc::lit(b"ACATTAG");
+        dna.each_mut()
+            .map(Some)
+            .map(SingleUseMut)
+            .into_iter()
+            .revcomp();
     }
 
     proptest! {
