@@ -98,7 +98,10 @@
 //! # Features
 //!
 //! * **`proptest`:** Enables [`proptest`](https://crates.io/crates/proptest) integration
-//!   and utils.
+//!   and utils, particularly `Arbitrary` generation of [`Nuc`], [`AmbiNuc`], [`Amino`] and
+//!   [`AmbiAmino`].
+//! * **`rand`:** Enables [`rand`](https://crates.io/crates/rand) integration, particularly
+//!   `StandardUniform` generation of [`Nuc`], [`AmbiNuc`], [`Amino`] and [`AmbiAmino`].
 //! * **`serde`:** Enables [`serde`](https://crates.io/crates/serde) integration for [`Seq<T>`].
 //! * **`unsafe`:** (experimental) This enables casting between [`&[Nuc]`](crate::Nuc)
 //!   and [`&[AmbiNuc]`](crate::AmbiNuc).
