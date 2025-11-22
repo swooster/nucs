@@ -25,5 +25,12 @@ rand = { version = "0.9.0", default-features = false, optional = true }
 serde = { version = "1.0", optional = true }
 
 [dev-dependencies]
+criterion = "0.7"
 proptest = { version = "1.7.0", features = ["std"] }
+rand = "0.9.0" # activate more features for bench
 serde_json = "1.0"
+
+[[bench]]
+name = "rand"
+harness = false
+required-features = ["rand"]
