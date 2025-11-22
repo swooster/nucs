@@ -104,6 +104,7 @@ name = "nucs"
 version = "0.1.2"
 dependencies = [
  "proptest",
+ "rand",
  "serde",
  "serde_json",
 ]

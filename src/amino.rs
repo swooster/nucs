@@ -694,6 +694,22 @@ impl TryFrom<AmbiAmino> for Amino {
     }
 }
 
+#[cfg(any(feature = "proptest", feature = "rand", test))]
+impl AmbiAmino {
+    pub(crate) const BITS_RANGE: std::ops::Range<u32> = 1..(1 << Amino::ALL.len());
+
+    /// Note: `bits` must be in [`Self::BITS_RANGE`].
+    pub(crate) fn from_bits(bits: u32) -> AmbiAmino {
+        Amino::ALL
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| bits & (1 << i) != 0)
+            .map(|(_, aa)| AmbiAmino::from(*aa))
+            .reduce(|a, b| a | b)
+            .expect("BUG: bits must have been zero despite requesting at least 1")
+    }
+}
+
 /// Displays a single-character code, falling back to `X`.
 ///
 /// # Examples

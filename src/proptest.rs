@@ -39,16 +39,8 @@ impl Arbitrary for AmbiAmino {
     type Strategy = SBoxedStrategy<AmbiAmino>;
 
     fn arbitrary_with(_args: ()) -> Self::Strategy {
-        (1u32..1 << Amino::ALL.len())
-            .prop_map(|bits| {
-                Amino::ALL
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, _)| bits & (1 << i) != 0)
-                    .map(|(_, aa)| AmbiAmino::from(*aa))
-                    .reduce(|a, b| a | b)
-                    .expect("BUG: bits must have been zero despite requesting at least 1")
-            })
+        AmbiAmino::BITS_RANGE
+            .prop_map(AmbiAmino::from_bits)
             .sboxed()
     }
 }
