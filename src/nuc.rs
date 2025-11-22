@@ -439,9 +439,9 @@ impl AmbiNuc {
         nucs
     }
 
-    fn from_u8(byte: u8) -> Option<Self> {
+    pub(crate) fn from_u8(byte: u8) -> Option<Self> {
         // (hopefully) efficiently match u8 against repr(u8) of enum
-        // e.g. from_u8!(byte, MyEnum { A B C })
+        // e.g. from_u8!(byte, A B C)
         macro_rules! from_u8 {
             ($byte:expr, $($variant:ident)+) => {{
                 $(const $variant: u8 = AmbiNuc::$variant as u8;)+

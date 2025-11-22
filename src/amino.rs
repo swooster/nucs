@@ -700,13 +700,14 @@ impl AmbiAmino {
 
     /// Note: `bits` must be in [`Self::BITS_RANGE`].
     pub(crate) fn from_bits(bits: u32) -> AmbiAmino {
-        Amino::ALL
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| bits & (1 << i) != 0)
-            .map(|(_, aa)| AmbiAmino::from(*aa))
-            .reduce(|a, b| a | b)
-            .expect("BUG: bits must have been zero despite requesting at least 1")
+        // The bit layout of all valid AmbiAminos:
+        // 000000x0 xxxxxxxx xxxxxxxx xxxxx0x1
+        //          <--------21 bits------>
+        // Note: Big-endian, and x can be any bit (with the contraint at least one x is true)
+
+        // Given a random number, consisting of 23 (low-order) bits, we need to spread them
+        // to match the bit pattern above... Easiest approach is move the second bit up.
+        Self(NonZeroU32::MIN | ((bits & 2) << 24) | ((bits & !2) << 1))
     }
 }
 
@@ -972,5 +973,23 @@ mod tests {
         let mut sorted = Amino::ALL;
         sorted.sort();
         assert_eq!(Amino::ALL, sorted);
+    }
+
+    #[test]
+    fn sanity_check_from_bits_values() {
+        // AmbiAmino::X has all bits enabled, and it's generated at compile-time via a slow
+        // but fairly fool-proof method, so it makes a good reference value.
+        // The last value in BITS_RANGE should have all bits turned on, so hopefully passing
+        // that to AmbiAmino::from_bits should result in AmbiAmino::X.
+        let all_bits = AmbiAmino::BITS_RANGE.last().unwrap();
+        assert_eq!(AmbiAmino::from_bits(all_bits), AmbiAmino::X);
+
+        // Make sure turning each bit on individually results in the same set of values
+        // as the concrete Aminos.
+        let mut concrete_ambi_aminos = std::array::from_fn(|i| AmbiAmino::from_bits(1u32 << i));
+        let mut expected = Amino::ALL.map(AmbiAmino::from);
+        concrete_ambi_aminos.sort();
+        expected.sort();
+        assert_eq!(concrete_ambi_aminos, expected);
     }
 }
