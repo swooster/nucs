@@ -15,7 +15,7 @@ edition = "2024"
 
 [features]
 default = []
-all = ["serde", "unsafe"]
+all = ["proptest", "serde", "unsafe"]
 
 unsafe = []
 
