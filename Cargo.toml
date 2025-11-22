@@ -15,12 +15,13 @@ edition = "2024"
 
 [features]
 default = []
-all = ["proptest", "serde", "unsafe"]
+all = ["proptest", "rand", "serde", "unsafe"]
 
 unsafe = []
 
 [dependencies]
 proptest = { version = "1.7.0", features = ["std"], optional = true }
+rand = { version = "0.9.0", default-features = false, optional = true }
 serde = { version = "1.0", optional = true }
 
 [dev-dependencies]

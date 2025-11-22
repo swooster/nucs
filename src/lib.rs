@@ -120,6 +120,8 @@ pub mod iter;
 #[cfg(any(feature = "proptest", test))]
 #[cfg_attr(docsrs, doc(cfg(feature = "proptest")))]
 pub mod proptest;
+#[cfg(feature = "rand")]
+mod rand;
 pub mod slice;
 pub mod translation;
 

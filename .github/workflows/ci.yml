@@ -45,7 +45,7 @@ jobs:
     strategy:
       matrix:
         rust_version: ${{fromJson(needs.setup.outputs.rust-versions)}}
-        features: [ "default", "proptest", "serde", "unsafe", "all" ]
+        features: [ "default", "proptest", "rand", "serde", "unsafe", "all" ]
     env:
       RUSTDOCFLAGS: -Dwarnings
       # Our tests are pretty fast with release, so might as well crank up the number of proptests
