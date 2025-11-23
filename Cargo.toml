@@ -34,3 +34,8 @@ serde_json = "1.0"
 name = "rand"
 harness = false
 required-features = ["rand"]
+
+[[bench]]
+name = "translation"
+harness = false
+required-features = ["rand"]
