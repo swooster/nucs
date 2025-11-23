@@ -372,8 +372,8 @@ impl AmbiNuc {
 
     /// Return iterator of [`Nuc`]s that this ambiguous nucleotide could be.
     ///
-    /// The iterator is guaranteed to return things in sorted order and without duplicates,
-    /// and its contents are guaranteed to recompose into this [`AmbiNuc`] via [`BitOr`].
+    /// The iterator will be consistent with [`AmbiNuc::expansions`]. The same effect can be
+    /// achieved with [`AmbiNuc`]'s implementation of [`IntoIterator`].
     ///
     /// # Examples
     ///
@@ -381,8 +381,28 @@ impl AmbiNuc {
     /// use nucs::{AmbiNuc, Nuc};
     ///
     /// assert!(AmbiNuc::B.iter().eq(Nuc::lit(b"CGT")));
+    ///
+    /// assert_eq!(Vec::from_iter(AmbiNuc::B), AmbiNuc::B.expansions());
     /// ```
     pub fn iter(self) -> std::iter::Copied<std::slice::Iter<'static, Nuc>> {
+        self.expansions().iter().copied()
+    }
+
+    /// Return slice of [`Nuc`]s that this ambiguous nucleotide could be.
+    ///
+    /// The slice will be non-empty, deduplicated, sorted, and its contents are guaranteed
+    /// to recompose into this [`AmbiNuc`] via [`BitOr`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, Nuc};
+    ///
+    /// assert_eq!(AmbiNuc::B.expansions(), Nuc::lit(b"CGT"));
+    /// assert_eq!(Nuc::C | Nuc::G | Nuc::T, AmbiNuc::B);
+    /// ```
+    #[must_use]
+    pub const fn expansions(self) -> &'static [Nuc] {
         match self {
             Self::A => &[Nuc::A] as &[_],
             Self::C => &[Nuc::C],
@@ -403,8 +423,6 @@ impl AmbiNuc {
 
             Self::N => &[Nuc::A, Nuc::C, Nuc::G, Nuc::T],
         }
-        .iter()
-        .copied()
     }
 
     /// Construct [`AmbiNuc`] array from literal without allocating.
@@ -774,37 +792,37 @@ mod tests {
     }
 
     #[test]
-    fn complementation_commutes_with_possibilities() {
+    fn complementation_commutes_with_expansions() {
         // Essentially checks that `AmbiNuc::complement` is correct by
         // defining it in terms of `Nuc::complement` and `AmbiNuc::possibilities`
         for nuc in AmbiNuc::ALL {
-            let mut expected: Vec<_> = nuc.iter().collect();
+            let mut expected: Vec<_> = nuc.expansions().to_vec();
             expected.complement();
             expected.sort();
-            assert!(nuc.complement().iter().eq(expected));
+            assert_eq!(nuc.complement().expansions(), expected);
         }
     }
 
     #[test]
-    fn unambiguous_nuc_is_its_only_possiblity() {
+    fn unambiguous_nuc_is_its_only_expansion() {
         for nuc in Nuc::ALL {
-            assert!(AmbiNuc::from(nuc).iter().eq([nuc]));
+            assert_eq!(AmbiNuc::from(nuc).expansions(), [nuc]);
         }
     }
 
     #[test]
-    fn unambiguous_pair_of_nucs_are_their_only_possiblities() {
+    fn unambiguous_pair_of_nucs_are_their_only_expansions() {
         for nuc1 in Nuc::ALL {
             for nuc2 in Nuc::ALL {
                 if nuc1 < nuc2 {
-                    assert!((nuc1 | nuc2).iter().eq([nuc1, nuc2]));
+                    assert_eq!((nuc1 | nuc2).expansions(), [nuc1, nuc2]);
                 }
             }
         }
     }
 
     #[test]
-    fn nuc_possiblities_are_sorted_and_unique() {
+    fn nuc_expansions_are_sorted_and_unique() {
         for nuc in AmbiNuc::ALL {
             assert!(nuc.iter().zip(nuc.iter().skip(1)).all(|(a, b)| a < b));
         }
@@ -818,7 +836,7 @@ mod tests {
     }
 
     #[test]
-    fn possibilities_can_be_recomposed_into_ambi_nucs() {
+    fn expansions_can_be_recomposed_into_ambi_nucs() {
         for nuc in AmbiNuc::ALL {
             assert_eq!(
                 nuc.iter().map(AmbiNuc::from).reduce(|a, b| a | b),
@@ -828,13 +846,13 @@ mod tests {
     }
 
     #[test]
-    fn ambi_nuc_bitor_is_consistent_with_possibilities() {
+    fn ambi_nuc_bitor_is_consistent_with_expansions() {
         for ambi1 in AmbiNuc::ALL {
             for ambi2 in AmbiNuc::ALL {
                 let mut expected: Vec<_> = ambi1.iter().chain(ambi2).collect();
                 expected.sort();
                 expected.dedup();
-                assert!((ambi1 | ambi2).iter().eq(expected));
+                assert_eq!((ambi1 | ambi2).expansions(), expected);
             }
         }
     }
