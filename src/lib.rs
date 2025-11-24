@@ -1,5 +1,6 @@
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
+#![allow(clippy::inline_always)]
 #![cfg_attr(not(feature = "unsafe"), forbid(unsafe_code))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
