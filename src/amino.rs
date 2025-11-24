@@ -535,6 +535,14 @@ impl AmbiAmino {
         AmbiAminoIter::new(self)
     }
 
+    pub(crate) const fn from_amino(amino: Amino) -> AmbiAmino {
+        Self(NonZeroU32::new(1 | Self::bit_mask(amino)).expect("x OR 1 is non-zero"))
+    }
+
+    pub(crate) const fn or(self, rhs: AmbiAmino) -> AmbiAmino {
+        Self(NonZeroU32::new(self.0.get() | rhs.0.get()).expect("non-zero OR non-zero is non-zero"))
+    }
+
     pub(crate) const fn bit_offset(amino: Amino) -> u8 {
         (amino as u8) % 32
     }

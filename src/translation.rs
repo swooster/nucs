@@ -50,70 +50,193 @@ impl GeneticCode for &[Amino; 64] {
     }
 }
 
-// TODO: type representing a pair of precomputed tables? (one for concrete, one for ambiguous)
+/// [`GeneticCode`] implementation optimized for speed over space.
+///
+/// Each [`FastTranslator`] comes with about 18KiB of additional lookup tables,
+/// dramatically improving translation speed, particularly for ambigous codons.
+pub struct FastTranslator {
+    // `lookup` is for `Nuc`s and `ambi_lookup` is for `AmbiNuc`s. They have similar layouts;
+    // each `Nuc`/`AmbiNuc` can be thought of as a hexidecimal digit, and each codon is thought of
+    // as a big-endian 3-digit hexadecimal index into the lookup table. A `Nuc` caps out at 0x8,
+    // but an `AmbiNuc` caps out at 0xf, hence the difference in table lengths. Note that this
+    // layout still requires entries for indices containing the digit 0, so we need an extra
+    // entry at the start for 0x000.
+    lookup: [Amino; 1 + 0x888],          // about 2KiB in size
+    ambi_lookup: [AmbiAmino; 1 + 0xfff], // 16KiB in size because `AmbiAmino` is 4 bytes.
+}
+
+impl FastTranslator {
+    /// Build [`FastTranslator`] from a table of [`Amino`]s.
+    ///
+    /// The [`Amino`]s must correspond to all codons in ascending lexicographical order.
+    ///
+    /// This requires up-front work, but can be done at compile-time.
+    #[must_use]
+    pub const fn from_table(table: [Amino; 64]) -> Self {
+        Self {
+            lookup: Self::build_concrete_lookup(table),
+            ambi_lookup: Self::build_ambi_lookup(table),
+        }
+    }
+
+    const fn build_concrete_lookup(table: [Amino; 64]) -> [Amino; 1 + 0x888] {
+        let mut lookup = [Amino::A; _];
+        let mut i = 0;
+        while i < table.len() {
+            let n1 = 1 << (0b11 & (i >> 4));
+            let n2 = 1 << (0b11 & (i >> 2));
+            let n3 = 1 << (0b11 & i);
+            lookup[(n1 << 8) | (n2 << 4) | n3] = table[i];
+            i += 1;
+        }
+        lookup
+    }
+
+    const fn build_ambi_lookup(table: [Amino; 64]) -> [AmbiAmino; 1 + 0xfff] {
+        // This is 20x faster than calculating each lookup entry in isolation because it dedupes
+        // the work of building merged table results. It treats the lookup like a lattice of sets:
+        // Instead of having to build each set from scratch, it just builds them out of two
+        // smaller sets. And counting upwards has the nice property of visiting the sets in
+        // topological order so subsets will be populated before the sets that they feed into.
+        let mut lookup = [AmbiAmino::X; _];
+        let mut i = 1;
+        while i < 16 {
+            let i_base = i << 8;
+            let (low, rest) = Self::split_lowest_bit(i);
+            if rest == 0 {
+                let table_idx = i.ilog2() << 4;
+                let mut j = 1;
+                while j < 16 {
+                    let i_j_base = i_base | (j << 4);
+                    let (low, rest) = Self::split_lowest_bit(j);
+                    if rest == 0 {
+                        let table_idx = table_idx | (j.ilog2() << 2);
+                        let mut k = 1;
+                        while k < 16 {
+                            let i_j_k_base = i_j_base | k;
+                            let (low, rest) = Self::split_lowest_bit(k);
+                            if rest == 0 {
+                                let table_idx = (table_idx | k.ilog2()) as usize;
+                                lookup[i_j_k_base] = AmbiAmino::from_amino(table[table_idx]);
+                            } else {
+                                lookup[i_j_k_base] =
+                                    lookup[i_j_base | low].or(lookup[i_j_base | rest]);
+                            }
+                            k += 1;
+                        }
+                    } else {
+                        let i_j_base_low = i_base | (low << 4);
+                        let i_j_base_rest = i_base | (rest << 4);
+                        let mut k = 1;
+                        while k < 16 {
+                            lookup[i_j_base | k] =
+                                lookup[i_j_base_low | k].or(lookup[i_j_base_rest | k]);
+                            k += 1;
+                        }
+                    }
+                    j += 1;
+                }
+            } else {
+                let i_base_low = low << 8;
+                let i_base_rest = rest << 8;
+                let mut j_k = 1;
+                while j_k < 256 {
+                    lookup[i_base | j_k] = lookup[i_base_low | j_k].or(lookup[i_base_rest | j_k]);
+                    j_k += 1;
+                }
+            }
+            i += 1;
+        }
+        lookup
+    }
+
+    // Split a number into its lowest bit and other bits.
+    const fn split_lowest_bit(i: usize) -> (usize, usize) {
+        let lowest = 1 << i.trailing_zeros();
+        (lowest, i & !lowest)
+    }
+}
+
+impl GeneticCode for &FastTranslator {
+    #[inline(always)]
+    fn map_codon(&self, codon: [Nuc; 3]) -> Amino {
+        let [n1, n2, n3] = codon;
+        self.lookup[((n1 as usize) << 8) | ((n2 as usize) << 4) | (n3 as usize)]
+    }
+
+    #[inline(always)]
+    fn map_ambi_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
+        let [n1, n2, n3] = codon;
+        self.ambi_lookup[((n1 as usize) << 8) | ((n2 as usize) << 4) | (n3 as usize)]
+    }
+}
 
 /// Standard code
-pub const NCBI1: &[Amino; 64] = &NCBI_DATA[0];
+pub const NCBI1: &FastTranslator = &ncbi(0);
 /// Vertebrate mitochondrial code
-pub const NCBI2: &[Amino; 64] = &NCBI_DATA[1];
+pub const NCBI2: &FastTranslator = &ncbi(1);
 /// Yeast mitochondrial code
-pub const NCBI3: &[Amino; 64] = &NCBI_DATA[2];
+pub const NCBI3: &FastTranslator = &ncbi(2);
 /// Mold, protozoan, and coelenterate mitochondrial code as well as mycoplasma and spiroplasma code
-pub const NCBI4: &[Amino; 64] = &NCBI_DATA[3];
+pub const NCBI4: &FastTranslator = &ncbi(3);
 /// Invertebrate mitochondrial code
-pub const NCBI5: &[Amino; 64] = &NCBI_DATA[4];
+pub const NCBI5: &FastTranslator = &ncbi(4);
 /// Ciliate dasycladacean and hexamita nuclear code
-pub const NCBI6: &[Amino; 64] = &NCBI_DATA[5];
+pub const NCBI6: &FastTranslator = &ncbi(5);
 /// Echinoderm and flatworm mitochondrial code
-pub const NCBI9: &[Amino; 64] = &NCBI_DATA[6];
+pub const NCBI9: &FastTranslator = &ncbi(6);
 /// Euplotid nuclear code
-pub const NCBI10: &[Amino; 64] = &NCBI_DATA[7];
+pub const NCBI10: &FastTranslator = &ncbi(7);
 /// Bacterial, archaeal and plant plastid code
-pub const NCBI11: &[Amino; 64] = &NCBI_DATA[8];
+pub const NCBI11: &FastTranslator = &ncbi(8);
 /// Alternative yeast nuclear code
-pub const NCBI12: &[Amino; 64] = &NCBI_DATA[9];
+pub const NCBI12: &FastTranslator = &ncbi(9);
 /// Ascidian mitochondrial code
-pub const NCBI13: &[Amino; 64] = &NCBI_DATA[10];
+pub const NCBI13: &FastTranslator = &ncbi(10);
 /// Alternative flatworm mitochondrial code
-pub const NCBI14: &[Amino; 64] = &NCBI_DATA[11];
+pub const NCBI14: &FastTranslator = &ncbi(11);
 /// Blepharisma nuclear code
-pub const NCBI15: &[Amino; 64] = &NCBI_DATA[12];
+pub const NCBI15: &FastTranslator = &ncbi(12);
 /// Chlorophycean mitochondrial code
-pub const NCBI16: &[Amino; 64] = &NCBI_DATA[13];
+pub const NCBI16: &FastTranslator = &ncbi(13);
 /// Trematode mitochondrial code
-pub const NCBI21: &[Amino; 64] = &NCBI_DATA[14];
+pub const NCBI21: &FastTranslator = &ncbi(14);
 /// Scenedesmus obliquus mitochondrial code
-pub const NCBI22: &[Amino; 64] = &NCBI_DATA[15];
+pub const NCBI22: &FastTranslator = &ncbi(15);
 /// Thraustochytrium mitochondrial code
-pub const NCBI23: &[Amino; 64] = &NCBI_DATA[16];
+pub const NCBI23: &FastTranslator = &ncbi(16);
 /// Pterobranchia mitochondrial code
-pub const NCBI24: &[Amino; 64] = &NCBI_DATA[17];
+pub const NCBI24: &FastTranslator = &ncbi(17);
 /// Candidate division SR1 and gracilibacteria code
-pub const NCBI25: &[Amino; 64] = &NCBI_DATA[18];
+pub const NCBI25: &FastTranslator = &ncbi(18);
 /// Pachysolen tannophilus nuclear code
-pub const NCBI26: &[Amino; 64] = &NCBI_DATA[19];
+pub const NCBI26: &FastTranslator = &ncbi(19);
 /// Karyorelict nuclear code
-pub const NCBI27: &[Amino; 64] = &NCBI_DATA[20];
+pub const NCBI27: &FastTranslator = &ncbi(20);
 /// Condylostoma nuclear code
-pub const NCBI28: &[Amino; 64] = &NCBI_DATA[21];
+pub const NCBI28: &FastTranslator = &ncbi(21);
 /// Mesodinium nuclear code
-pub const NCBI29: &[Amino; 64] = &NCBI_DATA[22];
+pub const NCBI29: &FastTranslator = &ncbi(22);
 /// Peritrich nuclear code
-pub const NCBI30: &[Amino; 64] = &NCBI_DATA[23];
+pub const NCBI30: &FastTranslator = &ncbi(23);
 /// Blastocrithidia nuclear code
-pub const NCBI31: &[Amino; 64] = &NCBI_DATA[24];
+pub const NCBI31: &FastTranslator = &ncbi(24);
 /// Balanophoraceae plastid code
-pub const NCBI32: &[Amino; 64] = &NCBI_DATA[25];
+pub const NCBI32: &FastTranslator = &ncbi(25);
 /// Cephalodiscidae mitochondrial code
-pub const NCBI33: &[Amino; 64] = &NCBI_DATA[26];
+pub const NCBI33: &FastTranslator = &ncbi(26);
 /// Enterosoma code
-pub const NCBI34: &[Amino; 64] = &NCBI_DATA[27];
+pub const NCBI34: &FastTranslator = &ncbi(27);
 /// Peptacetobacter code
-pub const NCBI35: &[Amino; 64] = &NCBI_DATA[28];
+pub const NCBI35: &FastTranslator = &ncbi(28);
 /// Anaerococcus and onthovivens code
-pub const NCBI36: &[Amino; 64] = &NCBI_DATA[29];
+pub const NCBI36: &FastTranslator = &ncbi(29);
 /// Absconditabacterales genetic code
-pub const NCBI37: &[Amino; 64] = &NCBI_DATA[30];
+pub const NCBI37: &FastTranslator = &ncbi(30);
+
+const fn ncbi(i: usize) -> FastTranslator {
+    FastTranslator::from_table(NCBI_DATA[i])
+}
 
 macro_rules! aminos {
     [ $( [$( $c:tt )+ ]),+ $(,)? ] => {{
@@ -209,4 +332,43 @@ const fn transpose<const N: usize, const M: usize>(table: [[Amino; N]; M]) -> [[
         i += 1;
     }
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Nucleotide;
+
+    use super::*;
+
+    #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+    #[test]
+    fn compare_fast_lookup_against_reference_implementation() {
+        // In order to be able to build `FastLookup`s for all NCBI tables at compile-time
+        // in 1 second, the ambiguous lookup generation code is convoluted. (doing things the
+        // obvious way would result in `nucs` taking 30 seconds to compile) To improve confidence,
+        // we check that for all codons and NCBI tables, `FastLookup` gives the same results as
+        // the simpler implementations provided by `&[Amino; 64]` and `GeneticCode`.
+        for raw in NCBI_DATA {
+            let fast = FastTranslator::from_table(raw);
+            for n1 in Nuc::ALL {
+                for n2 in Nuc::ALL {
+                    for n3 in Nuc::ALL {
+                        let codon = [n1, n2, n3];
+                        assert_eq!(Nuc::translate(codon, &fast), Nuc::translate(codon, &raw));
+                    }
+                }
+            }
+            for n1 in AmbiNuc::ALL {
+                for n2 in AmbiNuc::ALL {
+                    for n3 in AmbiNuc::ALL {
+                        let codon = [n1, n2, n3];
+                        assert_eq!(
+                            AmbiNuc::translate(codon, &fast),
+                            AmbiNuc::translate(codon, &raw)
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
