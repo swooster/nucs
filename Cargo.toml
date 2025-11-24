@@ -10,7 +10,7 @@ categories = ["science::bioinformatics::genomics"]
 authors = [
     "Steve Wooster <s.f.m.wooster+nucs@gmail.com>",
 ]
-rust-version = "1.88"
+rust-version = "1.89"
 edition = "2024"
 
 [features]
