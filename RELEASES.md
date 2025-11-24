@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## Version 0.2.0 (2025-11-24)
 
 * Add `proptest` integration for `Nuc`, `AmbiNuc`, `Amino` and `AmbiAmino`,
   as well as DNA and peptides. (#11)
