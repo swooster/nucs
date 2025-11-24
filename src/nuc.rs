@@ -11,10 +11,11 @@ use crate::{AmbiAmino, Amino, Symbol};
 /// Concrete nucleotide
 ///
 /// [`Nuc`]s are ordered by the value of their ASCII representation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Nuc {
     /// [`A`](Self::A)denine
+    #[default]
     A = 0b0001,
     /// [`C`](Self::C)ytosine
     C = 0b0010,
@@ -198,7 +199,7 @@ impl AsMut<Nuc> for Nuc {
 /// Beware that [`AmbiNuc`]'s order isn't alphabetic.
 ///
 /// </div>
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum AmbiNuc {
     /// [`A`](Self::A)denine
@@ -235,6 +236,7 @@ pub enum AmbiNuc {
     V = Nuc::A as u8 | Nuc::C as u8 | Nuc::G as u8,
 
     /// [`A`](Self::A)/[`C`](Self::C)/[`G`](Self::G)/[`T`](Self::T): [`N`](Self::N)ucleic acid
+    #[default]
     N = Nuc::A as u8 | Nuc::C as u8 | Nuc::G as u8 | Nuc::T as u8,
 }
 

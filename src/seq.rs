@@ -64,7 +64,7 @@ use crate::error::ParseSeqError;
 ///
 /// * **`serde`:** When enabled, [`Seq<T>`] is serializable (as a string) whenever it has a
 ///   [`Display`] impl, and deserializable whenever it has a [`FromStr`] impl.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Seq<T>(pub T);
 
 impl<T> Deref for Seq<T> {

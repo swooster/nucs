@@ -10,6 +10,7 @@ pub trait Symbol:
     'static
     + Clone
     + Copy
+    + Default
     + Display
     + std::fmt::Debug
     + FromStr<Err = ParseSymbolError>
