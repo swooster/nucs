@@ -14,7 +14,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         g.bench_function(BenchmarkId::from_parameter(len), |b| {
             b.iter_batched_ref(
                 || (0..len).map(|_| rng.random()).collect::<Vec<Nuc>>(),
-                |dna| dna.translate(NCBI1).collect::<Vec<_>>(),
+                |dna| dna.translate_to_vec(NCBI1),
                 BatchSize::SmallInput,
             )
         });
@@ -27,7 +27,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         g.bench_function(BenchmarkId::from_parameter(len), |b| {
             b.iter_batched_ref(
                 || (0..len).map(|_| rng.random()).collect::<Vec<AmbiNuc>>(),
-                |dna| dna.translate(NCBI1).collect::<Vec<_>>(),
+                |dna| dna.translate_to_vec(NCBI1),
                 BatchSize::SmallInput,
             )
         });

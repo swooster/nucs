@@ -8,7 +8,8 @@
 * Expand `DnaIter::revcomp` to work with iters of any `impl AsMut<Nuc>` rather than
   just `&mut Nuc`. (#12)
 * `Symbol` now requires `Default`. Additionally `Seq` impls `Default`. (#20)
-* Add `FastTranslator` to dramatically improve translation speed. (#18)
+* Add `FastTranslator`, `DnaSlice::translate_to_vec`, `DnaSlice::translate_to_array`
+  and `DnaSlice::translate_to_buf` to dramatically improve translation speed. (#18)
 
 ## Version 0.1.2 (2025-07-12)
 

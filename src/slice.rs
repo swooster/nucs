@@ -144,6 +144,88 @@ pub trait DnaSlice {
         self.as_flat_dna().iter().translate(genetic_code)
     }
 
+    /// Translate codons into peptide [`Vec`].
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
+    ///
+    /// let peptide = Seq(Nuc::lit(b"TATGCGAGAAAC").translate_to_vec(NCBI1));
+    /// assert_eq!(peptide.to_string(), "YARN");
+    /// ```
+    fn translate_to_vec<G: GeneticCode + Clone>(
+        &self,
+        genetic_code: G,
+    ) -> Vec<<Self::Nuc as Nucleotide>::Amino> {
+        let codons = self.as_codons();
+        let mut peptide = vec![Default::default(); codons.len()];
+        codons.translate_to_buf(genetic_code, &mut peptide);
+        peptide
+    }
+
+    /// Translate codons into fixed-length peptide.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{Amino, DnaSlice, NCBI1, Nuc, Seq};
+    ///
+    /// let peptide: Seq<[Amino; 4]> = Seq(Nuc::lit(b"TATGCGAGAAAC").translate_to_array(NCBI1));
+    /// assert_eq!(peptide.to_string(), "YARN");
+    /// ```
+    fn translate_to_array<G: GeneticCode + Clone, const N: usize>(
+        &self,
+        genetic_code: G,
+    ) -> [<Self::Nuc as Nucleotide>::Amino; N] {
+        let mut buf = [Default::default(); _];
+        self.translate_to_buf(genetic_code, &mut buf);
+        buf
+    }
+
+    /// Fill a buffer with amino acids built from translated codons.
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the length of `buf`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{Amino, DnaSlice, NCBI1, Nuc, Seq};
+    ///
+    /// let mut peptide: Seq<[Amino; 4]> = Default::default();
+    /// Nuc::lit(b"TATGCGAGAAAC").translate_to_buf(NCBI1, &mut *peptide);
+    /// assert_eq!(peptide.to_string(), "YARN");
+    /// ```
+    fn translate_to_buf<G: GeneticCode + Clone>(
+        &self,
+        genetic_code: G,
+        buf: &mut [<Self::Nuc as Nucleotide>::Amino],
+    ) {
+        const CHUNK_LEN: usize = 16;
+        let codons = self.as_codons();
+        assert_eq!(codons.len(), buf.len());
+        let (codon_chunks, codon_remainder) = codons.as_chunks::<CHUNK_LEN>();
+        let (amino_chunks, amino_remainder) = buf.as_chunks_mut::<CHUNK_LEN>();
+        for (aminos, codons) in std::iter::zip(amino_chunks, codon_chunks) {
+            for (amino, codon) in std::iter::zip(aminos, codons) {
+                *amino = Self::Nuc::translate(*codon, genetic_code.clone());
+            }
+        }
+        for (amino, codon) in std::iter::zip(amino_remainder, codon_remainder) {
+            *amino = Self::Nuc::translate(*codon, genetic_code.clone());
+        }
+    }
+
     /// Return object that implements [`Display`](std::fmt::Display)
     /// for printing sequence compactly. See [`nucs::iter::Display`](crate::iter::Display)
     /// for more details.
