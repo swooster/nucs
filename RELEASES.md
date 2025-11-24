@@ -7,6 +7,7 @@
 * Add `rand` integration for `Nuc`, `AmbiNuc`, `Amino` and `AmbiAmino`. (#14)
 * Expand `DnaIter::revcomp` to work with iters of any `impl AsMut<Nuc>` rather than
   just `&mut Nuc`. (#12)
+* `Symbol` now requires `Default`. Additionally `Seq` impls `Default`. (#20)
 
 ## Version 0.1.2 (2025-07-12)
 

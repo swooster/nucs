@@ -14,10 +14,11 @@ use crate::iter::AmbiAminoIter;
 /// For details, see: <https://en.wikipedia.org/wiki/FASTA_format#Sequence_representation>
 ///
 /// [`Amino`]s are ordered by the value of their ASCII representation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Amino {
     /// Translation stop
+    #[default]
     Stop = b'*',
     /// Alanine
     A = b'A',
@@ -540,6 +541,12 @@ impl AmbiAmino {
 
     pub(crate) const fn bit_mask(amino: Amino) -> u32 {
         1 << Self::bit_offset(amino)
+    }
+}
+
+impl Default for AmbiAmino {
+    fn default() -> AmbiAmino {
+        AmbiAmino::X
     }
 }
 
