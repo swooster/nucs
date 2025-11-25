@@ -4,6 +4,9 @@
 
 * Tweak `Nucleotide::translate`, swapping order of arguments and taking reference. This eliminates
   a lot of `Clone` bounds in APIs. (#23)
+* Add `GeneticCode::translate` to provide a simpler alternative to `Nucleotide::translate`.
+  Give longer names to `GeneticCode::map_codon` and `GeneticCode::map_ambi_codon`, to better
+  reflect that they're not intended to be used directly. (#24)
 
 ## Version 0.2.0 (2025-11-24)
 

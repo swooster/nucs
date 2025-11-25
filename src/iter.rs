@@ -321,7 +321,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|codon| N::translate(&self.genetic_code, codon))
+            .map(|codon| self.genetic_code.translate(codon))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -338,7 +338,7 @@ where
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter
             .next_back()
-            .map(|codon| N::translate(&self.genetic_code, codon))
+            .map(|codon| self.genetic_code.translate(codon))
     }
 }
 

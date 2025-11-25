@@ -661,6 +661,9 @@ pub trait Nucleotide: Symbol {
     fn complement(self) -> Self;
 
     /// Translate a codon into an amino acid
+    ///
+    /// Instead of using this directly, prefer [`GeneticCode::translate`], as that tends to
+    /// be clearer.
     fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino;
 }
 
@@ -674,7 +677,7 @@ impl Nucleotide for Nuc {
     }
 
     fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino {
-        genetic_code.map_codon(codon)
+        genetic_code.translate_concrete_codon(codon)
     }
 }
 
@@ -688,7 +691,7 @@ impl Nucleotide for AmbiNuc {
     }
 
     fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino {
-        genetic_code.map_ambi_codon(codon)
+        genetic_code.translate_ambiguous_codon(codon)
     }
 }
 

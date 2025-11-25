@@ -218,11 +218,11 @@ pub trait DnaSlice {
         let (amino_chunks, amino_remainder) = buf.as_chunks_mut::<CHUNK_LEN>();
         for (aminos, codons) in std::iter::zip(amino_chunks, codon_chunks) {
             for (amino, codon) in std::iter::zip(aminos, codons) {
-                *amino = Self::Nuc::translate(&genetic_code, *codon);
+                *amino = genetic_code.translate(*codon);
             }
         }
         for (amino, codon) in std::iter::zip(amino_remainder, codon_remainder) {
-            *amino = Self::Nuc::translate(&genetic_code, *codon);
+            *amino = genetic_code.translate(*codon);
         }
     }
 
