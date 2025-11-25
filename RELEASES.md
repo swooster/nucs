@@ -8,6 +8,8 @@
   Give longer names to `GeneticCode::map_codon` and `GeneticCode::map_ambi_codon`, to better
   reflect that they're not intended to be used directly. (#24)
 * Add `Clone` and `Debug` impls for `FastTranslator`. (#25)
+* Add `FastTranslator::from_genetic_code` and tweak `FastTranslator::from_table` to take
+  table reference instead of value. (#26)
 
 ## Version 0.2.0 (2025-11-24)
 
