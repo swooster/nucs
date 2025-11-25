@@ -1,30 +1,51 @@
 //! Types related to translation of codons into amino acids.
 
-use crate::{AmbiAmino, AmbiNuc, Amino, Nuc};
+use crate::{AmbiAmino, AmbiNuc, Amino, Nuc, Nucleotide};
 
 /// Trait representing any type that can be used to translate codons into amino acids.
 ///
 /// The most commonly used [`GeneticCode`] is [`NCBI1`] but there are others in
 /// [`nucs::translation`](crate::translation).
 pub trait GeneticCode {
-    /// Map a concrete codon to an amino acid
-    fn map_codon(&self, codon: [Nuc; 3]) -> Amino;
+    /// Translate a codon to an amino acid
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiAmino, Amino, AmbiNuc, Nuc, translation::GeneticCode};
+    ///
+    /// let genetic_code = |_codon| Amino::W; // translate everything to tryptophan
+    /// assert_eq!(genetic_code.translate([Nuc::A; 3]), Amino::W);
+    /// assert_eq!(genetic_code.translate([AmbiNuc::N; 3]), AmbiAmino::W);
+    /// ```
+    fn translate<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
+        N::translate(self, codon)
+    }
 
-    /// Map an ambiguous codon to an amino acid
-    fn map_ambi_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
+    /// Translate a concrete codon to an amino acid
+    ///
+    /// Consider calling [`GeneticCode::translate`] instead; this primarily exists to be provided
+    /// by implementors of [`GeneticCode`].
+    fn translate_concrete_codon(&self, codon: [Nuc; 3]) -> Amino;
+
+    /// Translate an ambiguous codon to an amino acid
+    ///
+    /// Consider calling [`GeneticCode::translate`] instead; this primarily exists to be provided
+    /// by implementors of [`GeneticCode`].
+    fn translate_ambiguous_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
         let [ambi_n1, ambi_n2, ambi_n3] = codon;
         ambi_n1
             .iter()
             .flat_map(|n1| ambi_n2.iter().map(move |n2| [n1, n2]))
             .flat_map(|[n1, n2]| ambi_n3.iter().map(move |n3| [n1, n2, n3]))
-            .map(|codon| AmbiAmino::from(self.map_codon(codon)))
+            .map(|codon| AmbiAmino::from(self.translate_concrete_codon(codon)))
             .reduce(|a, b| a | b)
             .expect("BUG: null nucleotide encountered")
     }
 }
 
 impl<F: Fn([Nuc; 3]) -> Amino> GeneticCode for F {
-    fn map_codon(&self, codon: [Nuc; 3]) -> Amino {
+    fn translate_concrete_codon(&self, codon: [Nuc; 3]) -> Amino {
         self(codon)
     }
 }
@@ -41,7 +62,7 @@ impl<F: Fn([Nuc; 3]) -> Amino> GeneticCode for F {
 /// `TAA`, `TAC`, `TAG`, `TAT`, `TCA`, `TCC`, `TCG`, `TCT`,
 /// `TGA`, `TGC`, `TGG`, `TGT`, `TTA`, `TTC`, `TTG`, `TTT`,
 impl GeneticCode for &[Amino; 64] {
-    fn map_codon(&self, codon: [Nuc; 3]) -> Amino {
+    fn translate_concrete_codon(&self, codon: [Nuc; 3]) -> Amino {
         let [n1, n2, n3] = codon;
         let idx = 16 * (n1 as u8).trailing_zeros()
             + 4 * (n2 as u8).trailing_zeros()
@@ -156,13 +177,13 @@ impl FastTranslator {
 
 impl GeneticCode for &FastTranslator {
     #[inline(always)]
-    fn map_codon(&self, codon: [Nuc; 3]) -> Amino {
+    fn translate_concrete_codon(&self, codon: [Nuc; 3]) -> Amino {
         let [n1, n2, n3] = codon;
         self.lookup[((n1 as usize) << 8) | ((n2 as usize) << 4) | (n3 as usize)]
     }
 
     #[inline(always)]
-    fn map_ambi_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
+    fn translate_ambiguous_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
         let [n1, n2, n3] = codon;
         self.ambi_lookup[((n1 as usize) << 8) | ((n2 as usize) << 4) | (n3 as usize)]
     }
@@ -333,8 +354,6 @@ const fn transpose<const N: usize, const M: usize>(table: [[Amino; N]; M]) -> [[
 
 #[cfg(test)]
 mod tests {
-    use crate::Nucleotide;
-
     use super::*;
 
     #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
@@ -351,7 +370,7 @@ mod tests {
                 for n2 in Nuc::ALL {
                     for n3 in Nuc::ALL {
                         let codon = [n1, n2, n3];
-                        assert_eq!(Nuc::translate(&fast, codon), Nuc::translate(&raw, codon));
+                        assert_eq!(fast.translate(codon), raw.translate(codon));
                     }
                 }
             }
@@ -359,10 +378,7 @@ mod tests {
                 for n2 in AmbiNuc::ALL {
                     for n3 in AmbiNuc::ALL {
                         let codon = [n1, n2, n3];
-                        assert_eq!(
-                            AmbiNuc::translate(&fast, codon),
-                            AmbiNuc::translate(&raw, codon)
-                        );
+                        assert_eq!(fast.translate(codon), raw.translate(codon));
                     }
                 }
             }
