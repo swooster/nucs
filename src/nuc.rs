@@ -661,7 +661,7 @@ pub trait Nucleotide: Symbol {
     fn complement(self) -> Self;
 
     /// Translate a codon into an amino acid
-    fn translate<G: GeneticCode>(codon: [Self; 3], genetic_code: G) -> Self::Amino;
+    fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino;
 }
 
 impl Nucleotide for Nuc {
@@ -673,7 +673,7 @@ impl Nucleotide for Nuc {
         Nuc::complement(self)
     }
 
-    fn translate<G: GeneticCode>(codon: [Self; 3], genetic_code: G) -> Self::Amino {
+    fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino {
         genetic_code.map_codon(codon)
     }
 }
@@ -687,7 +687,7 @@ impl Nucleotide for AmbiNuc {
         AmbiNuc::complement(self)
     }
 
-    fn translate<G: GeneticCode>(codon: [Self; 3], genetic_code: G) -> Self::Amino {
+    fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino {
         genetic_code.map_ambi_codon(codon)
     }
 }

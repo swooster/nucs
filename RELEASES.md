@@ -1,5 +1,10 @@
 # Releases
 
+## Unreleased
+
+* Tweak `Nucleotide::translate`, swapping order of arguments and taking reference. This eliminates
+  a lot of `Clone` bounds in APIs. (#23)
+
 ## Version 0.2.0 (2025-11-24)
 
 * Add `proptest` integration for `Nuc`, `AmbiNuc`, `Amino` and `AmbiAmino`,
