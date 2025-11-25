@@ -88,13 +88,25 @@ pub struct FastTranslator {
 }
 
 impl FastTranslator {
+    /// Build [`FastTranslator`] from another [`GeneticCode`].
+    ///
+    /// This precalculates every possible ambiguous codon's translation.
+    #[must_use]
+    pub fn from_genetic_code<G: GeneticCode>(genetic_code: &G) -> Self {
+        Self::from_table(&std::array::from_fn(|i| {
+            let codon = [4, 2, 0].map(|offset| Nuc::ALL[(i >> offset) & 0b11]);
+            genetic_code.translate(codon)
+        }))
+    }
+
     /// Build [`FastTranslator`] from a table of [`Amino`]s.
     ///
     /// The [`Amino`]s must correspond to all codons in ascending lexicographical order.
     ///
-    /// This requires up-front work, but can be done at compile-time.
+    /// This precalculates every possible ambiguous codon's translation,
+    /// but can be done at compile-time.
     #[must_use]
-    pub const fn from_table(table: [Amino; 64]) -> Self {
+    pub const fn from_table(table: &[Amino; 64]) -> Self {
         let lookup = Self::build_concrete_lookup(table);
         Self {
             ambi_lookup: Self::build_ambi_lookup(&lookup),
@@ -102,7 +114,7 @@ impl FastTranslator {
         }
     }
 
-    const fn build_concrete_lookup(table: [Amino; 64]) -> [Amino; 1 + 0x888] {
+    const fn build_concrete_lookup(table: &[Amino; 64]) -> [Amino; 1 + 0x888] {
         let mut lookup = [Amino::A; _];
         let mut i = 0;
         while i < table.len() {
@@ -269,7 +281,7 @@ pub const NCBI36: &FastTranslator = &ncbi(29);
 pub const NCBI37: &FastTranslator = &ncbi(30);
 
 const fn ncbi(i: usize) -> FastTranslator {
-    FastTranslator::from_table(NCBI_DATA[i])
+    FastTranslator::from_table(&NCBI_DATA[i])
 }
 
 macro_rules! aminos {
@@ -381,21 +393,32 @@ mod tests {
         // we check that for all codons and NCBI tables, `FastLookup` gives the same results as
         // the simpler implementations provided by `&[Amino; 64]` and `GeneticCode`.
         for raw in &NCBI_DATA {
-            let fast = &FastTranslator::from_table(*raw);
-            for n1 in Nuc::ALL {
-                for n2 in Nuc::ALL {
-                    for n3 in Nuc::ALL {
-                        let codon = [n1, n2, n3];
-                        assert_eq!(fast.translate(codon), raw.translate(codon));
-                    }
+            let fast = &FastTranslator::from_table(raw);
+            assert_genetic_codes_eq(&fast, &raw);
+        }
+    }
+
+    #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+    #[test]
+    fn fast_lookup_can_be_built_from_other_genetic_code() {
+        let new = &FastTranslator::from_genetic_code(&NCBI1);
+        assert_genetic_codes_eq(&new, &NCBI1);
+    }
+
+    fn assert_genetic_codes_eq(g1: &impl GeneticCode, g2: &impl GeneticCode) {
+        for n1 in Nuc::ALL {
+            for n2 in Nuc::ALL {
+                for n3 in Nuc::ALL {
+                    let codon = [n1, n2, n3];
+                    assert_eq!(g1.translate(codon), g2.translate(codon));
                 }
             }
-            for n1 in AmbiNuc::ALL {
-                for n2 in AmbiNuc::ALL {
-                    for n3 in AmbiNuc::ALL {
-                        let codon = [n1, n2, n3];
-                        assert_eq!(fast.translate(codon), raw.translate(codon));
-                    }
+        }
+        for n1 in AmbiNuc::ALL {
+            for n2 in AmbiNuc::ALL {
+                for n3 in AmbiNuc::ALL {
+                    let codon = [n1, n2, n3];
+                    assert_eq!(g1.translate(codon), g2.translate(codon));
                 }
             }
         }
