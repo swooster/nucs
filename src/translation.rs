@@ -1,6 +1,6 @@
 //! Types related to translation of codons into amino acids.
 
-use crate::{AmbiAmino, AmbiNuc, Amino, Nuc, Nucleotide};
+use crate::{AmbiAmino, AmbiNuc, Amino, DnaSlice, Nuc, Nucleotide};
 
 /// Trait representing any type that can be used to translate codons into amino acids.
 ///
@@ -75,6 +75,7 @@ impl GeneticCode for &[Amino; 64] {
 ///
 /// Each [`FastTranslator`] comes with about 18KiB of additional lookup tables,
 /// dramatically improving translation speed, particularly for ambigous codons.
+#[derive(Clone)]
 pub struct FastTranslator {
     // `lookup` is for `Nuc`s and `ambi_lookup` is for `AmbiNuc`s. They have similar layouts;
     // each `Nuc`/`AmbiNuc` can be thought of as a hexidecimal digit, and each codon is thought of
@@ -186,6 +187,21 @@ impl GeneticCode for &FastTranslator {
     fn translate_ambiguous_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
         let [n1, n2, n3] = codon;
         self.ambi_lookup[((n1 as usize) << 8) | ((n2 as usize) << 4) | (n3 as usize)]
+    }
+}
+
+impl std::fmt::Debug for FastTranslator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut map = f.debug_map();
+        for n1 in Nuc::ALL {
+            for n2 in Nuc::ALL {
+                for n3 in Nuc::ALL {
+                    let codon = [n1, n2, n3];
+                    map.entry(&codon.display(), &self.translate([n1, n2, n3]));
+                }
+            }
+        }
+        map.finish()
     }
 }
 
