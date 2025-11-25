@@ -345,13 +345,13 @@ mod tests {
         // obvious way would result in `nucs` taking 30 seconds to compile) To improve confidence,
         // we check that for all codons and NCBI tables, `FastLookup` gives the same results as
         // the simpler implementations provided by `&[Amino; 64]` and `GeneticCode`.
-        for raw in NCBI_DATA {
-            let fast = FastTranslator::from_table(raw);
+        for raw in &NCBI_DATA {
+            let fast = &FastTranslator::from_table(*raw);
             for n1 in Nuc::ALL {
                 for n2 in Nuc::ALL {
                     for n3 in Nuc::ALL {
                         let codon = [n1, n2, n3];
-                        assert_eq!(Nuc::translate(codon, &fast), Nuc::translate(codon, &raw));
+                        assert_eq!(Nuc::translate(&fast, codon), Nuc::translate(&raw, codon));
                     }
                 }
             }
@@ -360,8 +360,8 @@ mod tests {
                     for n3 in AmbiNuc::ALL {
                         let codon = [n1, n2, n3];
                         assert_eq!(
-                            AmbiNuc::translate(codon, &fast),
-                            AmbiNuc::translate(codon, &raw)
+                            AmbiNuc::translate(&fast, codon),
+                            AmbiNuc::translate(&raw, codon)
                         );
                     }
                 }

@@ -156,7 +156,7 @@ pub trait DnaSlice {
     /// let peptide = Seq(Nuc::lit(b"TATGCGAGAAAC").translate_to_vec(NCBI1));
     /// assert_eq!(peptide.to_string(), "YARN");
     /// ```
-    fn translate_to_vec<G: GeneticCode + Clone>(
+    fn translate_to_vec<G: GeneticCode>(
         &self,
         genetic_code: G,
     ) -> Vec<<Self::Nuc as Nucleotide>::Amino> {
@@ -180,7 +180,7 @@ pub trait DnaSlice {
     /// let peptide: Seq<[Amino; 4]> = Seq(Nuc::lit(b"TATGCGAGAAAC").translate_to_array(NCBI1));
     /// assert_eq!(peptide.to_string(), "YARN");
     /// ```
-    fn translate_to_array<G: GeneticCode + Clone, const N: usize>(
+    fn translate_to_array<G: GeneticCode, const N: usize>(
         &self,
         genetic_code: G,
     ) -> [<Self::Nuc as Nucleotide>::Amino; N] {
@@ -206,7 +206,7 @@ pub trait DnaSlice {
     /// Nuc::lit(b"TATGCGAGAAAC").translate_to_buf(NCBI1, &mut *peptide);
     /// assert_eq!(peptide.to_string(), "YARN");
     /// ```
-    fn translate_to_buf<G: GeneticCode + Clone>(
+    fn translate_to_buf<G: GeneticCode>(
         &self,
         genetic_code: G,
         buf: &mut [<Self::Nuc as Nucleotide>::Amino],
@@ -218,11 +218,11 @@ pub trait DnaSlice {
         let (amino_chunks, amino_remainder) = buf.as_chunks_mut::<CHUNK_LEN>();
         for (aminos, codons) in std::iter::zip(amino_chunks, codon_chunks) {
             for (amino, codon) in std::iter::zip(aminos, codons) {
-                *amino = Self::Nuc::translate(*codon, genetic_code.clone());
+                *amino = Self::Nuc::translate(&genetic_code, *codon);
             }
         }
         for (amino, codon) in std::iter::zip(amino_remainder, codon_remainder) {
-            *amino = Self::Nuc::translate(*codon, genetic_code.clone());
+            *amino = Self::Nuc::translate(&genetic_code, *codon);
         }
     }
 

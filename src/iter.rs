@@ -314,14 +314,14 @@ impl<I, N, G> Iterator for Translated<G, I>
 where
     I: Iterator<Item = [N; 3]>,
     N: Nucleotide,
-    G: GeneticCode + Clone,
+    G: GeneticCode,
 {
     type Item = N::Amino;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|codon| N::translate(codon, self.genetic_code.clone()))
+            .map(|codon| N::translate(&self.genetic_code, codon))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -333,12 +333,12 @@ impl<I, N, G> DoubleEndedIterator for Translated<G, I>
 where
     I: DoubleEndedIterator<Item = [N; 3]>,
     N: Nucleotide,
-    G: GeneticCode + Clone,
+    G: GeneticCode,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter
             .next_back()
-            .map(|codon| N::translate(codon, self.genetic_code.clone()))
+            .map(|codon| N::translate(&self.genetic_code, codon))
     }
 }
 
@@ -346,7 +346,7 @@ impl<I, N, G> ExactSizeIterator for Translated<G, I>
 where
     I: ExactSizeIterator<Item = [N; 3]>,
     N: Nucleotide,
-    G: GeneticCode + Clone,
+    G: GeneticCode,
 {
     fn len(&self) -> usize {
         self.iter.len()
