@@ -73,9 +73,10 @@ impl FastTranslator {
     /// This requires up-front work, but can be done at compile-time.
     #[must_use]
     pub const fn from_table(table: [Amino; 64]) -> Self {
+        let lookup = Self::build_concrete_lookup(table);
         Self {
-            lookup: Self::build_concrete_lookup(table),
-            ambi_lookup: Self::build_ambi_lookup(table),
+            ambi_lookup: Self::build_ambi_lookup(&lookup),
+            lookup,
         }
     }
 
@@ -92,60 +93,56 @@ impl FastTranslator {
         lookup
     }
 
-    const fn build_ambi_lookup(table: [Amino; 64]) -> [AmbiAmino; 1 + 0xfff] {
+    const fn build_ambi_lookup(concrete_lookup: &[Amino; 1 + 0x888]) -> [AmbiAmino; 1 + 0xfff] {
         // This is 20x faster than calculating each lookup entry in isolation because it dedupes
         // the work of building merged table results. It treats the lookup like a lattice of sets:
         // Instead of having to build each set from scratch, it just builds them out of two
         // smaller sets. And counting upwards has the nice property of visiting the sets in
         // topological order so subsets will be populated before the sets that they feed into.
+        // When an index contains multiple bits (when _b variables are non-zero), that means it's
+        // ambiguous and should composed out of the results of smaller indices. In theory this
+        // could be flattened into a single unnested loop that populates the indices in order,
+        // but then the iterations couldn't share as much work, so it'd take about 50% longer.
         let mut lookup = [AmbiAmino::X; _];
-        let mut i = 1;
-        while i < 16 {
-            let i_base = i << 8;
-            let (low, rest) = Self::split_lowest_bit(i);
-            if rest == 0 {
-                let table_idx = i.ilog2() << 4;
-                let mut j = 1;
-                while j < 16 {
-                    let i_j_base = i_base | (j << 4);
-                    let (low, rest) = Self::split_lowest_bit(j);
-                    if rest == 0 {
-                        let table_idx = table_idx | (j.ilog2() << 2);
-                        let mut k = 1;
-                        while k < 16 {
-                            let i_j_k_base = i_j_base | k;
-                            let (low, rest) = Self::split_lowest_bit(k);
-                            if rest == 0 {
-                                let table_idx = (table_idx | k.ilog2()) as usize;
-                                lookup[i_j_k_base] = AmbiAmino::from_amino(table[table_idx]);
+        let mut n1 = 0x100;
+        while n1 <= 0xf00 {
+            let (n1_a, n1_b) = Self::split_lowest_bit(n1);
+            if n1_b == 0 {
+                let mut n2 = 0x010;
+                while n2 <= 0x0f0 {
+                    let n1_n2 = n1 | n2;
+                    let (n2_a, n2_b) = Self::split_lowest_bit(n2);
+                    if n2_b == 0 {
+                        let mut n3 = 0x001;
+                        while n3 <= 0x00f {
+                            let n1_n2_n3 = n1_n2 | n3;
+                            let (n3_a, n3_b) = Self::split_lowest_bit(n3);
+                            if n3_b == 0 {
+                                lookup[n1_n2_n3] = AmbiAmino::from_amino(concrete_lookup[n1_n2_n3]);
                             } else {
-                                lookup[i_j_k_base] =
-                                    lookup[i_j_base | low].or(lookup[i_j_base | rest]);
+                                lookup[n1_n2_n3] = lookup[n1_n2 | n3_a].or(lookup[n1_n2 | n3_b]);
                             }
-                            k += 1;
+                            n3 += 0x001;
                         }
                     } else {
-                        let i_j_base_low = i_base | (low << 4);
-                        let i_j_base_rest = i_base | (rest << 4);
-                        let mut k = 1;
-                        while k < 16 {
-                            lookup[i_j_base | k] =
-                                lookup[i_j_base_low | k].or(lookup[i_j_base_rest | k]);
-                            k += 1;
+                        let n1_n2_a = n1 | n2_a;
+                        let n1_n2_b = n1 | n2_b;
+                        let mut n3 = 0x001;
+                        while n3 <= 0x00f {
+                            lookup[n1_n2 | n3] = lookup[n1_n2_a | n3].or(lookup[n1_n2_b | n3]);
+                            n3 += 1;
                         }
                     }
-                    j += 1;
+                    n2 += 0x010;
                 }
             } else {
-                let i_base_low = low << 8;
-                let i_base_rest = rest << 8;
-                let mut j_k = 1;
-                while j_k < 256 {
-                    lookup[i_base | j_k] = lookup[i_base_low | j_k].or(lookup[i_base_rest | j_k]);
-                    j_k += 1;
+                let mut n2_n3 = 0x011;
+                while n2_n3 <= 0x0ff {
+                    lookup[n1 | n2_n3] = lookup[n1_a | n2_n3].or(lookup[n1_b | n2_n3]);
+                    n2_n3 += 1;
                 }
             }
-            i += 1;
+            n1 += 0x100;
         }
         lookup
     }
