@@ -135,7 +135,7 @@ pub use nuc::{AmbiNuc, Nuc, Nucleotide};
 pub use seq::Seq;
 pub use slice::DnaSlice;
 pub use symbol::Symbol;
-pub use translation::NCBI1;
+pub use translation::{NCBI1, NCBI1_RC};
 
 /// Common nucleotide sequence type
 pub type Dna = Seq<Vec<Nuc>>;
