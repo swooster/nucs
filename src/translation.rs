@@ -52,15 +52,8 @@ impl<F: Fn([Nuc; 3]) -> Amino> GeneticCode for F {
 
 /// A table of amino acids can be used for genetic coding.
 ///
-/// The [`Amino`]s must be ordered to correspond with:
-/// `AAA`, `AAC`, `AAG`, `AAT`, `ACA`, `ACC`, `ACG`, `ACT`,
-/// `AGA`, `AGC`, `AGG`, `AGT`, `ATA`, `ATC`, `ATG`, `ATT`,
-/// `CAA`, `CAC`, `CAG`, `CAT`, `CCA`, `CCC`, `CCG`, `CCT`,
-/// `CGA`, `CGC`, `CGG`, `CGT`, `CTA`, `CTC`, `CTG`, `CTT`,
-/// `GAA`, `GAC`, `GAG`, `GAT`, `GCA`, `GCC`, `GCG`, `GCT`,
-/// `GGA`, `GGC`, `GGG`, `GGT`, `GTA`, `GTC`, `GTG`, `GTT`,
-/// `TAA`, `TAC`, `TAG`, `TAT`, `TCA`, `TCC`, `TCG`, `TCT`,
-/// `TGA`, `TGC`, `TGG`, `TGT`, `TTA`, `TTC`, `TTG`, `TTT`,
+/// The [`Amino`]s must be ordered to correspond with codons in ascending lexicographical order
+/// (`AAA`, `AAC`, `AAG`, `AAT`, `ACA`, ... `TTT`).
 impl GeneticCode for &[Amino; 64] {
     fn translate_concrete_codon(&self, codon: [Nuc; 3]) -> Amino {
         let [n1, n2, n3] = codon;
@@ -118,10 +111,7 @@ impl FastTranslator {
         let mut lookup = [Amino::A; _];
         let mut i = 0;
         while i < table.len() {
-            let n1 = 1 << (0b11 & (i >> 4));
-            let n2 = 1 << (0b11 & (i >> 2));
-            let n3 = 1 << (0b11 & i);
-            lookup[(n1 << 8) | (n2 << 4) | n3] = table[i];
+            lookup[Self::table_index_to_fast_lookup_index(i)] = table[i];
             i += 1;
         }
         lookup
@@ -186,6 +176,110 @@ impl FastTranslator {
         let lowest = 1 << i.trailing_zeros();
         (lowest, i & !lowest)
     }
+
+    /// Convert to simple amino acid table.
+    ///
+    /// The returned [`Amino`]s correspond to all codons in ascending lexicographical order.
+    /// Although such a table can be used as a [`GeneticCode`], it's intended more for interop
+    /// or inspection.
+    ///
+    /// ```
+    /// use nucs::{Amino, NCBI1};
+    ///
+    /// let table = NCBI1.to_table();
+    /// assert_eq!(table[0], Amino::K);  // AAA -> K
+    /// assert_eq!(table[1], Amino::N);  // AAC -> N
+    /// assert_eq!(table[2], Amino::K);  // AAG -> K
+    /// assert_eq!(table[3], Amino::N);  // AAT -> N
+    /// assert_eq!(table[4], Amino::T);  // ACA -> T
+    /// // ...
+    /// assert_eq!(table[16], Amino::Q); // CAA -> Q
+    /// // ...
+    /// assert_eq!(table[32], Amino::E); // GAA -> E
+    /// // ...
+    /// assert_eq!(table[62], Amino::L); // TTG -> L
+    /// assert_eq!(table[63], Amino::F); // TTT -> F
+    /// ```
+    #[must_use]
+    pub const fn to_table(&self) -> [Amino; 64] {
+        let mut table = [Amino::A; _];
+        let mut i = 0;
+        while i < table.len() {
+            table[i] = self.lookup[Self::table_index_to_fast_lookup_index(i)];
+            i += 1;
+        }
+        table
+    }
+
+    /// Return the reverse complement of this translation table.
+    ///
+    /// It produces a copy of the translation table where the reverse complement of each codon
+    /// maps to the same amino acid as before. For example:
+    ///
+    /// ```
+    /// use nucs::{Amino, Nuc, NCBI1};
+    /// use nucs::translation::{FastTranslator, GeneticCode};
+    /// use Nuc::{A, C, G, T};
+    ///
+    /// assert_eq!(NCBI1.translate([A, T, G]), Amino::M);
+    /// let ncbi1_rc = &NCBI1.reverse_complement();
+    /// // ATG reverse-complemented is CAT, so...
+    /// assert_eq!(ncbi1_rc.translate([C, A, T]), Amino::M);
+    /// ```
+    ///
+    /// This is useful in combination with methods like [`DnaSlice::rev_translate_to_vec`],
+    /// because it allows complementation to folded into translation, reducing the amount of work
+    /// needed to produce reverse-complement translations. Actual usage would look something like:
+    ///
+    /// ```
+    /// use nucs::{Amino, DnaSlice, Nuc, NCBI1_RC, Seq};
+    /// // NCBI1_RC is &NCBI1.reverse_complement()
+    ///
+    /// let dna = Nuc::lit(b"GCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.rev_translate_to_vec(NCBI1_RC);
+    /// assert_eq!(peptide, Amino::lit(b"FAST*RC"));
+    /// ```
+    #[must_use]
+    pub const fn reverse_complement(&self) -> Self {
+        let mut lookup = [Amino::A; _];
+        let mut i = 0;
+        let max = lookup.len();
+        while i < max {
+            let complement_idx = Self::reverse_complement_index(i);
+            // The gaps in this lookup can be complemented to invalid indices.
+            if complement_idx < max {
+                lookup[i] = self.lookup[complement_idx];
+            }
+            i += 1;
+        }
+        let mut ambi_lookup = [AmbiAmino::X; _];
+        let mut i = 0;
+        let max = ambi_lookup.len();
+        while i < max {
+            ambi_lookup[i] = self.ambi_lookup[Self::reverse_complement_index(i)];
+            i += 1;
+        }
+        Self {
+            lookup,
+            ambi_lookup,
+        }
+    }
+
+    // (by "table", I mean list of one amino per concrete codon, in lexicographical order)
+    const fn table_index_to_fast_lookup_index(idx: usize) -> usize {
+        let n1 = 1 << (0b11 & (idx >> 4));
+        let n2 = 1 << (0b11 & (idx >> 2));
+        let n3 = 1 << (0b11 & idx);
+        (n1 << 8) | (n2 << 4) | n3
+    }
+
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "valid lookup indexes are 12 bits"
+    )]
+    const fn reverse_complement_index(idx: usize) -> usize {
+        ((idx as u16).reverse_bits() >> 4) as usize
+    }
 }
 
 impl GeneticCode for &FastTranslator {
@@ -218,7 +312,19 @@ impl std::fmt::Debug for FastTranslator {
 }
 
 /// Standard code
+///
+/// The reverse complemented version is [`NCBI1_RC`].
 pub const NCBI1: &FastTranslator = &ncbi(0);
+/// Standard code (reverse complemented)
+///
+/// This is the reverse complemented version of [`NCBI1`]. If other genetic codes are needed,
+/// they can be defined like so:
+/// ```
+/// use nucs::translation::{FastTranslator, NCBI2};
+///
+/// const NCBI2_RC: &FastTranslator = &NCBI2.reverse_complement();
+/// ```
+pub const NCBI1_RC: &FastTranslator = &NCBI1.reverse_complement();
 /// Vertebrate mitochondrial code
 pub const NCBI2: &FastTranslator = &ncbi(1);
 /// Yeast mitochondrial code
@@ -403,6 +509,21 @@ mod tests {
     fn fast_lookup_can_be_built_from_other_genetic_code() {
         let new = &FastTranslator::from_genetic_code(&NCBI1);
         assert_genetic_codes_eq(&new, &NCBI1);
+    }
+
+    #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+    #[test]
+    fn fast_lookup_conversion_roundtrips() {
+        let table = &NCBI_DATA[0];
+        assert_eq!(&FastTranslator::from_table(table).to_table(), table);
+    }
+
+    #[test]
+    fn fast_lookup_reverse_complement() {
+        let ncbi1_rc = const { &NCBI1.reverse_complement() };
+        let dna = Nuc::lit(b"ATCTTCGGGGGGAATTAAAAACTAATAAAGTTCAACAATGGTTGGCATCTCTTCCCGGGG");
+        let peptide = dna.rev_translate_to_vec(ncbi1_rc);
+        assert_eq!(peptide, Amino::lit(b"PREEMPTIVELY*FLIPPED"));
     }
 
     fn assert_genetic_codes_eq(g1: &impl GeneticCode, g2: &impl GeneticCode) {

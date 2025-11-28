@@ -60,7 +60,7 @@ pub trait DnaSlice {
         self.as_codons_mut().as_flattened_mut()
     }
 
-    /// Cast to slice of codons, discarding leftover trailing nucleotides.
+    /// Cast to slice of codons, discarding excess trailing nucleotides.
     ///
     /// This returns the first reading frame.
     ///
@@ -80,7 +80,7 @@ pub trait DnaSlice {
         self.as_flat_dna().as_chunks().0
     }
 
-    /// Cast to mutable slice of codons, discarding leftover trailing nucleotides.
+    /// Cast to mutable slice of codons, discarding excess trailing nucleotides.
     ///
     /// This returns the first reading frame.
     ///
@@ -97,6 +97,45 @@ pub trait DnaSlice {
     /// ```
     fn as_codons_mut(&mut self) -> &mut [[Self::Nuc; 3]] {
         self.as_flat_dna_mut().as_chunks_mut().0
+    }
+
+    /// Cast to slice of codons, discarding excess leading nucleotides.
+    ///
+    /// This returns the first reading frame from the end.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSlice, Nuc};
+    /// use Nuc::{A, C, T};
+    ///
+    /// let dna = Nuc::lit(b"CATATTAC");
+    /// assert_eq!(
+    ///     dna.as_rcodons(),
+    ///     [[T, A, T], [T, A, C]]
+    /// );
+    /// ```
+    fn as_rcodons(&self) -> &[[Self::Nuc; 3]] {
+        self.as_flat_dna().as_rchunks().1
+    }
+
+    /// Cast to mutable slice of codons, discarding excess leading nucleotides.
+    ///
+    /// This returns the first reading frame from the end.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSlice, Nuc};
+    ///
+    /// let mut dna = Nuc::lit(b"CATATTAC");
+    /// let codons = dna.as_rcodons_mut();
+    /// // Set the second codon's first nucleotide...
+    /// codons[1][0] = Nuc::G;
+    /// assert_eq!(dna, Nuc::lit(b"CATATGAC"));
+    /// ```
+    fn as_rcodons_mut(&mut self) -> &mut [[Self::Nuc; 3]] {
+        self.as_flat_dna_mut().as_rchunks_mut().1
     }
 
     /// Return all 3 reading frames of codons
@@ -153,7 +192,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let peptide = Seq(Nuc::lit(b"TATGCGAGAAAC").translate_to_vec(NCBI1));
+    /// let peptide = Seq(Nuc::lit(b"TATGCGAGAAACA").translate_to_vec(NCBI1));
     /// assert_eq!(peptide.to_string(), "YARN");
     /// ```
     fn translate_to_vec<G: GeneticCode>(
@@ -163,6 +202,48 @@ pub trait DnaSlice {
         let codons = self.as_codons();
         let mut peptide = vec![Default::default(); codons.len()];
         codons.translate_to_buf(genetic_code, &mut peptide);
+        peptide
+    }
+
+    /// Translate codons into peptide [`Vec`] in reverse order.
+    ///
+    /// This translates codons starting at the end. If the DNA can be converted to codons without
+    /// excess nucleotides, then this produces the exact reverse of the output of
+    /// [`translate_to_vec`](Self::translate_to_vec). It's intended to be used with
+    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement)
+    /// as that speeds up translation by folding the complementation into the translator.
+    ///
+    /// <div class="warning">
+    ///
+    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
+    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
+    ///
+    /// </div>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiAmino, AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    ///
+    /// let dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
+    /// let peptide = dna.translate_to_vec(NCBI1);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"SDRAWKCAB"));
+    /// let peptide = dna.rev_translate_to_vec(NCBI1);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"BACKWARDS"));
+    ///
+    /// // The proper way to use this for RC translation is with a reverse-complemented
+    /// // translation table like `NCBI1_RC`.
+    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.rev_translate_to_vec(NCBI1_RC);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"FAST*RC"));
+    /// ```
+    fn rev_translate_to_vec<G: GeneticCode>(
+        &self,
+        genetic_code: G,
+    ) -> Vec<<Self::Nuc as Nucleotide>::Amino> {
+        let codons = self.as_rcodons();
+        let mut peptide = vec![Default::default(); codons.len()];
+        codons.rev_translate_to_buf(genetic_code, &mut peptide);
         peptide
     }
 
@@ -177,7 +258,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{Amino, DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let peptide: Seq<[Amino; 4]> = Seq(Nuc::lit(b"TATGCGAGAAAC").translate_to_array(NCBI1));
+    /// let peptide: Seq<[Amino; 4]> = Seq(Nuc::lit(b"TATGCGAGAAACA").translate_to_array(NCBI1));
     /// assert_eq!(peptide.to_string(), "YARN");
     /// ```
     fn translate_to_array<G: GeneticCode, const N: usize>(
@@ -186,6 +267,51 @@ pub trait DnaSlice {
     ) -> [<Self::Nuc as Nucleotide>::Amino; N] {
         let mut buf = [Default::default(); _];
         self.translate_to_buf(genetic_code, &mut buf);
+        buf
+    }
+
+    /// Translate codons into fixed-length peptide in reverse order.
+    ///
+    /// This translates codons starting at the end. If the DNA can be converted to codons without
+    /// excess nucleotides, then this produces the exact reverse of the output of
+    /// [`translate_to_array`](Self::translate_to_array). It's intended to be used with
+    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement)
+    /// as that speeds up translation by folding the complementation into the translator.
+    ///
+    /// <div class="warning">
+    ///
+    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
+    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
+    ///
+    /// </div>
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiAmino, AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    ///
+    /// let dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
+    /// let peptide: [_; 9] = dna.translate_to_array(NCBI1);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"SDRAWKCAB"));
+    /// let peptide: [_; 9] = dna.rev_translate_to_array(NCBI1);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"BACKWARDS"));
+    ///
+    /// // The proper way to use this for RC translation is with a reverse-complemented
+    /// // translation table like `NCBI1_RC`.
+    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide: [_; 7] = dna.rev_translate_to_array(NCBI1_RC);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"FAST*RC"));
+    /// ```
+    fn rev_translate_to_array<G: GeneticCode, const N: usize>(
+        &self,
+        genetic_code: G,
+    ) -> [<Self::Nuc as Nucleotide>::Amino; N] {
+        let mut buf = [Default::default(); _];
+        self.rev_translate_to_buf(genetic_code, &mut buf);
         buf
     }
 
@@ -203,7 +329,7 @@ pub trait DnaSlice {
     /// use nucs::{Amino, DnaSlice, NCBI1, Nuc, Seq};
     ///
     /// let mut peptide: Seq<[Amino; 4]> = Default::default();
-    /// Nuc::lit(b"TATGCGAGAAAC").translate_to_buf(NCBI1, &mut *peptide);
+    /// Nuc::lit(b"TATGCGAGAAACA").translate_to_buf(NCBI1, &mut *peptide);
     /// assert_eq!(peptide.to_string(), "YARN");
     /// ```
     fn translate_to_buf<G: GeneticCode>(
@@ -222,6 +348,65 @@ pub trait DnaSlice {
             }
         }
         for (amino, codon) in std::iter::zip(amino_remainder, codon_remainder) {
+            *amino = genetic_code.translate(*codon);
+        }
+    }
+
+    /// Fill a buffer with amino acids built from translating codons in reverse.
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// This translates codons starting at the end. If the DNA can be converted to codons without
+    /// excess nucleotides, then this produces the exact reverse of the output of
+    /// [`translate_to_buf`](Self::translate_to_buf). It's intended to be used with
+    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement).
+    ///
+    /// <div class="warning">
+    ///
+    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
+    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
+    ///
+    /// </div>
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the length of `buf`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiAmino, AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    ///
+    /// let mut dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
+    /// let mut peptide: [_; 9] = Default::default();
+    /// dna.translate_to_buf(NCBI1, &mut peptide);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"SDRAWKCAB"));
+    /// dna.rev_translate_to_buf(NCBI1, &mut peptide);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"BACKWARDS"));
+    ///
+    /// // The proper way to use this for RC translation is with a reverse-complemented
+    /// // translation table like `NCBI1_RC`.
+    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let mut peptide: [_; 7] = Default::default();
+    /// dna.rev_translate_to_buf(NCBI1_RC, &mut peptide);
+    /// assert_eq!(peptide, AmbiAmino::lit(b"FAST*RC"));
+    /// ```
+    fn rev_translate_to_buf<G: GeneticCode>(
+        &self,
+        genetic_code: G,
+        buf: &mut [<Self::Nuc as Nucleotide>::Amino],
+    ) {
+        const CHUNK_LEN: usize = 16;
+        let codons = self.as_rcodons();
+        assert_eq!(codons.len(), buf.len());
+        let (codon_chunks, codon_remainder) = codons.as_chunks::<CHUNK_LEN>();
+        let (amino_remainder, amino_chunks) = buf.as_rchunks_mut::<CHUNK_LEN>();
+        for (aminos, codons) in amino_chunks.iter_mut().rev().zip(codon_chunks) {
+            for (amino, codon) in aminos.iter_mut().rev().zip(codons) {
+                *amino = genetic_code.translate(*codon);
+            }
+        }
+        for (amino, codon) in amino_remainder.iter_mut().rev().zip(codon_remainder) {
             *amino = genetic_code.translate(*codon);
         }
     }
