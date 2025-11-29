@@ -11,6 +11,7 @@
 * Add `FastTranslator::from_genetic_code` and tweak `FastTranslator::from_table` to take
   table reference instead of value. (#26)
 * Add `Seq::translated_*` methods. (#30)
+* Rename `DnaSlice::translate_*` methods. (#31)
 * Allow `Seq` to be compared to strings. (#28)
 * Add `Symbol::seq` helper. (#29)
 
