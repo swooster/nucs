@@ -3,8 +3,9 @@ use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-use crate::Symbol;
 use crate::error::ParseSeqError;
+use crate::translation::GeneticCode;
+use crate::{DnaIter, DnaSlice, Nucleotide, Symbol};
 
 /// Provides DNA/peptide ergonomics for collections.
 ///
@@ -70,6 +71,185 @@ use crate::error::ParseSeqError;
 ///   [`Display`] impl, and deserializable whenever it has a [`FromStr`] impl.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Seq<T>(pub T);
+
+impl<T> Seq<T> {
+    /// Translate codons into [`Seq`]-wrapped peptide.
+    ///
+    /// This should work with a wider variety of collections, but may be slower as a result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    /// use nucs::{NCBI1, Nuc, Seq};
+    ///
+    /// let dna = Nuc::seq(b"TATGCGAGAAACA");
+    /// let peptide: Seq<VecDeque<_>> = dna.translated_by(NCBI1);
+    /// assert_eq!(peptide, "YARN");
+    /// ```
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "consistency with other methods, plus G is likely Copy"
+    )]
+    pub fn translated_by<S, G, U>(&self, genetic_code: G) -> Seq<U>
+    where
+        for<'a> &'a T: IntoIterator<Item = &'a S>,
+        S: Nucleotide,
+        G: GeneticCode,
+        U: FromIterator<S::Amino>,
+    {
+        Seq(self
+            .0
+            .into_iter()
+            .codons()
+            .map(|codon| genetic_code.translate(codon))
+            .collect())
+    }
+
+    /// Translate codons into fixed-length [`Seq`]-wrapped peptide.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{NCBI1, Nuc, Seq};
+    ///
+    /// let dna = Nuc::seq(b"TATGCGAGAAACA");
+    /// let peptide: Seq<[_; 4]> = dna.translated_to_array_by(NCBI1);
+    /// assert_eq!(peptide, "YARN");
+    /// ```
+    pub fn translated_to_array_by<S, G, const N: usize>(
+        &self,
+        genetic_code: G,
+    ) -> Seq<[<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino; N]>
+    where
+        T: AsRef<[S]>,
+        [S]: DnaSlice,
+        G: GeneticCode,
+    {
+        Seq(self.0.as_ref().translate_to_array(genetic_code))
+    }
+
+    /// Translate codons into fixed-length [`Seq`]-wrapped  peptide in reverse order.
+    ///
+    /// This translates codons starting at the end. If the DNA can be converted to codons without
+    /// excess nucleotides, then this produces the exact reverse of the output of
+    /// [`translated_to_array_by`](Self::translated_to_array_by). It's intended to be used with
+    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement)
+    /// as that speeds up translation by folding the complementation into the translator.
+    ///
+    /// <div class="warning">
+    ///
+    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
+    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
+    ///
+    /// </div>
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, NCBI1, NCBI1_RC, Seq};
+    ///
+    /// let dna = AmbiNuc::seq(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
+    /// let peptide: Seq<[_; 9]> = dna.translated_to_array_by(NCBI1);
+    /// assert_eq!(peptide, "SDRAWKCAB");
+    /// let peptide: Seq<[_; 9]> = dna.rev_translated_to_array_by(NCBI1);
+    /// assert_eq!(peptide, "BACKWARDS");
+    ///
+    /// // The proper way to use this for RC translation is with a reverse-complemented
+    /// // translation table like `NCBI1_RC`.
+    /// let dna = AmbiNuc::seq(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide: Seq<[_; 7]> = dna.rev_translated_to_array_by(NCBI1_RC);
+    /// assert_eq!(peptide, "FAST*RC");
+    /// ```
+    pub fn rev_translated_to_array_by<S, G, const N: usize>(
+        &self,
+        genetic_code: G,
+    ) -> Seq<[<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino; N]>
+    where
+        T: AsRef<[S]>,
+        [S]: DnaSlice,
+        G: GeneticCode,
+    {
+        Seq(self.0.as_ref().rev_translate_to_array(genetic_code))
+    }
+
+    /// Translate codons into [`Seq`]-wrapped peptide [`Vec`].
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{NCBI1, Nuc};
+    ///
+    /// let dna = Nuc::seq(b"TATGCGAGAAACA");
+    /// let peptide = dna.translated_to_vec_by(NCBI1);
+    /// assert_eq!(peptide, "YARN");
+    /// ```
+    pub fn translated_to_vec_by<S, G>(
+        &self,
+        genetic_code: G,
+    ) -> Seq<Vec<<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino>>
+    where
+        T: AsRef<[S]>,
+        [S]: DnaSlice,
+        G: GeneticCode,
+    {
+        Seq(self.0.as_ref().translate_to_vec(genetic_code))
+    }
+
+    /// Translate codons into [`Seq`]-wrapped peptide [`Vec`] in reverse order.
+    ///
+    /// This translates codons starting at the end. If the DNA can be converted to codons without
+    /// excess nucleotides, then this produces the exact reverse of the output of
+    /// [`translated_to_vec_by`](Self::translated_to_vec_by). It's intended to be used with
+    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement)
+    /// as that speeds up translation by folding the complementation into the translator.
+    ///
+    /// <div class="warning">
+    ///
+    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
+    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
+    ///
+    /// </div>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, NCBI1, NCBI1_RC};
+    ///
+    /// let dna = AmbiNuc::seq(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
+    /// let peptide = dna.translated_to_vec_by(NCBI1);
+    /// assert_eq!(peptide, "SDRAWKCAB");
+    /// let peptide = dna.rev_translated_to_vec_by(NCBI1);
+    /// assert_eq!(peptide, "BACKWARDS");
+    ///
+    /// // The proper way to use this for RC translation is with a reverse-complemented
+    /// // translation table like `NCBI1_RC`.
+    /// let dna = AmbiNuc::seq(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.rev_translated_to_vec_by(NCBI1_RC);
+    /// assert_eq!(peptide, "FAST*RC");
+    /// ```
+    pub fn rev_translated_to_vec_by<S, G>(
+        &self,
+        genetic_code: G,
+    ) -> Seq<Vec<<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino>>
+    where
+        T: AsRef<[S]>,
+        [S]: DnaSlice,
+        G: GeneticCode,
+    {
+        Seq(self.0.as_ref().rev_translate_to_vec(genetic_code))
+    }
+}
 
 impl<T> Deref for Seq<T> {
     type Target = T;
@@ -247,5 +427,44 @@ mod serde_tests {
             err.to_string()
                 .contains("invalid nucleotide 'X' at position 3")
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::VecDeque;
+
+    use crate::{NCBI1, Nuc, Seq};
+
+    #[test]
+    fn sanity_check_that_seq_works_with_arrays() {
+        let dna = Nuc::seq(b"ACGT");
+        assert_eq!(dna, "ACGT");
+        let peptide = dna.translated_to_vec_by(NCBI1);
+        assert_eq!(peptide, "T");
+    }
+
+    #[test]
+    fn sanity_check_that_seq_works_with_vecs() {
+        let dna = Seq(Nuc::lit(b"ACGT").to_vec());
+        assert_eq!(dna, "ACGT");
+        let peptide = dna.translated_to_vec_by(NCBI1);
+        assert_eq!(peptide, "T");
+    }
+
+    #[test]
+    fn sanity_check_that_seq_works_with_slices() {
+        let dna = Seq(&Nuc::lit(b"ACGT"));
+        let peptide = dna.translated_to_vec_by(NCBI1);
+        assert_eq!(peptide, "T");
+    }
+
+    #[test]
+    fn sanity_check_that_seq_works_with_vecdeques() {
+        type VdSeq<T> = Seq<VecDeque<T>>;
+        let dna = VdSeq::from_iter(Nuc::lit(b"ACGT"));
+        assert_eq!(dna, "ACGT");
+        let peptide: VdSeq<_> = dna.translated_by(NCBI1);
+        assert_eq!(peptide, "T");
     }
 }
