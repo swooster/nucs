@@ -19,7 +19,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSlice, Nuc, Seq};
     /// use Nuc::{A, C, G, T};
     ///
     /// let codons = [
@@ -174,7 +174,7 @@ pub trait DnaSlice {
     /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
     /// let peptide: Seq<Vec<_>> = Nuc::lit(b"TATGCGAGAAAC").translate(NCBI1).collect();
-    /// assert_eq!(peptide.to_string(), "YARN");
+    /// assert_eq!(peptide, "YARN");
     /// ```
     fn translate<G: GeneticCode>(
         &self,
@@ -192,8 +192,9 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let peptide = Seq(Nuc::lit(b"TATGCGAGAAACA").translate_to_vec(NCBI1));
-    /// assert_eq!(peptide.to_string(), "YARN");
+    /// let dna = Nuc::lit(b"TATGCGAGAAACA");
+    /// let peptide = dna.translate_to_vec(NCBI1);
+    /// assert_eq!(Seq(peptide), "YARN");
     /// ```
     fn translate_to_vec<G: GeneticCode>(
         &self,
@@ -223,19 +224,19 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiAmino, AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
     ///
     /// let dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
     /// let peptide = dna.translate_to_vec(NCBI1);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"SDRAWKCAB"));
+    /// assert_eq!(Seq(peptide), "SDRAWKCAB");
     /// let peptide = dna.rev_translate_to_vec(NCBI1);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"BACKWARDS"));
+    /// assert_eq!(Seq(peptide), "BACKWARDS");
     ///
     /// // The proper way to use this for RC translation is with a reverse-complemented
     /// // translation table like `NCBI1_RC`.
     /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
     /// let peptide = dna.rev_translate_to_vec(NCBI1_RC);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"FAST*RC"));
+    /// assert_eq!(Seq(peptide), "FAST*RC");
     /// ```
     fn rev_translate_to_vec<G: GeneticCode>(
         &self,
@@ -256,10 +257,11 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{Amino, DnaSlice, NCBI1, Nuc, Seq};
+    /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let peptide: Seq<[Amino; 4]> = Seq(Nuc::lit(b"TATGCGAGAAACA").translate_to_array(NCBI1));
-    /// assert_eq!(peptide.to_string(), "YARN");
+    /// let dna = Nuc::lit(b"TATGCGAGAAACA");
+    /// let peptide: [_; 4] = dna.translate_to_array(NCBI1);
+    /// assert_eq!(Seq(peptide), "YARN");
     /// ```
     fn translate_to_array<G: GeneticCode, const N: usize>(
         &self,
@@ -292,19 +294,19 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiAmino, AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
     ///
     /// let dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
     /// let peptide: [_; 9] = dna.translate_to_array(NCBI1);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"SDRAWKCAB"));
+    /// assert_eq!(Seq(peptide), "SDRAWKCAB");
     /// let peptide: [_; 9] = dna.rev_translate_to_array(NCBI1);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"BACKWARDS"));
+    /// assert_eq!(Seq(peptide), "BACKWARDS");
     ///
     /// // The proper way to use this for RC translation is with a reverse-complemented
     /// // translation table like `NCBI1_RC`.
     /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
     /// let peptide: [_; 7] = dna.rev_translate_to_array(NCBI1_RC);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"FAST*RC"));
+    /// assert_eq!(Seq(peptide), "FAST*RC");
     /// ```
     fn rev_translate_to_array<G: GeneticCode, const N: usize>(
         &self,
@@ -326,11 +328,12 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{Amino, DnaSlice, NCBI1, Nuc, Seq};
+    /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let mut peptide: Seq<[Amino; 4]> = Default::default();
-    /// Nuc::lit(b"TATGCGAGAAACA").translate_to_buf(NCBI1, &mut *peptide);
-    /// assert_eq!(peptide.to_string(), "YARN");
+    /// let dna = Nuc::lit(b"TATGCGAGAAACA");
+    /// let mut peptide: [_; 4] = Default::default();
+    /// dna.translate_to_buf(NCBI1, &mut peptide);
+    /// assert_eq!(Seq(peptide), "YARN");
     /// ```
     fn translate_to_buf<G: GeneticCode>(
         &self,
@@ -375,21 +378,21 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiAmino, AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
     ///
     /// let mut dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
     /// let mut peptide: [_; 9] = Default::default();
     /// dna.translate_to_buf(NCBI1, &mut peptide);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"SDRAWKCAB"));
+    /// assert_eq!(Seq(peptide), "SDRAWKCAB");
     /// dna.rev_translate_to_buf(NCBI1, &mut peptide);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"BACKWARDS"));
+    /// assert_eq!(Seq(peptide), "BACKWARDS");
     ///
     /// // The proper way to use this for RC translation is with a reverse-complemented
     /// // translation table like `NCBI1_RC`.
     /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
     /// let mut peptide: [_; 7] = Default::default();
     /// dna.rev_translate_to_buf(NCBI1_RC, &mut peptide);
-    /// assert_eq!(peptide, AmbiAmino::lit(b"FAST*RC"));
+    /// assert_eq!(Seq(peptide), "FAST*RC");
     /// ```
     fn rev_translate_to_buf<G: GeneticCode>(
         &self,
@@ -584,9 +587,9 @@ mod tests {
     fn translated_type_inference() {
         let mut dna = Nuc::lit(b"AAAACCCGGT");
         let peptide: Seq<Vec<_>> = anon_slice(&dna).translate(NCBI1).collect();
-        assert_eq!(peptide.to_string(), "KTR");
+        assert_eq!(peptide, "KTR");
         let peptide: Seq<Vec<_>> = anon_mut_slice(&mut dna).translate(NCBI1).collect();
-        assert_eq!(peptide.to_string(), "KTR");
+        assert_eq!(peptide, "KTR");
     }
 
     #[test]

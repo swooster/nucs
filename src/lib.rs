@@ -17,7 +17,7 @@
 //! // `Dna` can be parsed, modified and displayed.
 //! let mut dna: Dna = "CATG".parse()?;
 //! dna.extend([Nuc::A, Nuc::G]);
-//! assert_eq!(dna.to_string(), "CATGAG");
+//! assert_eq!(dna, "CATGAG");
 //!
 //! // For convenience, there's a helper to build const literals:
 //! const CAT: &[Nuc] = &Nuc::lit(b"CAT");
@@ -48,7 +48,7 @@
 //!     ] as [&[_]; 3]
 //! );
 //! slice.revcomp(); // in-place reverse-complement
-//! assert_eq!(dna.to_string(), "CTAATGT");
+//! assert_eq!(dna, "CTAATGT");
 //!
 //! // `DnaIter` supplies helpers for working with DNA iterators non-destructively:
 //! use nucs::DnaIter;
@@ -86,12 +86,12 @@
 //!
 //! let dna = Nuc::lit(b"TTTGAGCTCATAAACGAGA");
 //! let peptide: Seq<Vec<_>> = dna.translate(NCBI1).collect();
-//! assert_eq!(peptide.to_string(), "FELINE");
+//! assert_eq!(peptide, "FELINE");
 //!
 //! // Even ambiguous DNA can be translated:
 //! let dna = AmbiNuc::lit(b"MTTGCGTCTCCCGAGCGC");
 //! let peptide: Seq<Vec<_>> = dna.translate(NCBI1).collect();
-//! assert_eq!(peptide.to_string(), "JASPER");
+//! assert_eq!(peptide, "JASPER");
 //! # Ok(())
 //! # }
 //! ```
