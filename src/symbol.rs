@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::hash::Hash;
 use std::str::FromStr;
 
+use crate::Seq;
 use crate::error::ParseSymbolError;
 
 /// A sequence element; either [`Nuc`](crate::Nuc), [`AmbiNuc`](crate::AmbiNuc),
@@ -55,6 +56,13 @@ pub trait Symbol:
     #[must_use]
     #[track_caller]
     fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N];
+
+    /// Construct [`Seq`]-wrapped array from literal without allocating.
+    ///
+    /// This is just intended to be a convenience method for testing.
+    #[must_use]
+    #[track_caller]
+    fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]>;
 }
 
 pub(crate) mod sealed {

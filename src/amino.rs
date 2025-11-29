@@ -5,9 +5,9 @@ use std::num::NonZeroU32;
 use std::ops::{BitOr, BitOrAssign};
 use std::str::FromStr;
 
-use crate::Symbol;
 use crate::error::ParseSymbolError;
 use crate::iter::AmbiAminoIter;
+use crate::{Seq, Symbol};
 
 /// Amino acid
 ///
@@ -205,6 +205,31 @@ impl Amino {
             i += 1;
         }
         aas
+    }
+
+    /// Construct [`Seq`]-wrapped [`Amino`] array from literal without allocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{Amino, Seq};
+    ///
+    /// let aas1 = Amino::seq(b"ACME*WIDGETS");
+    /// // ...is shorthand for...
+    /// use Amino::{A, C, M, E, Stop, W, I, D, G, T, S};
+    /// let aas2 = Seq([A, C, M, E, Stop, W, I, D, G, E, T, S]);
+    ///
+    /// assert_eq!(aas1, aas2);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This panics if the supplied literal isn't valid. **Whitespace is NOT allowed**
+    /// because the returned array must have the same length.
+    #[must_use]
+    #[track_caller]
+    pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Amino; N]> {
+        Seq(Self::lit(literal))
     }
 }
 
@@ -516,6 +541,33 @@ impl AmbiAmino {
             i += 1;
         }
         aas
+    }
+
+    /// Construct [`Seq`]-wrapped [`AmbiAmino`] array from literal without allocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiAmino, Seq};
+    ///
+    /// let aas1 = AmbiAmino::seq(b"TOO*LONG");
+    /// // ...is shorthand for...
+    /// let aas2 = Seq([
+    ///     AmbiAmino::T, AmbiAmino::O, AmbiAmino::O, AmbiAmino::STOP,
+    ///     AmbiAmino::L, AmbiAmino::O, AmbiAmino::N, AmbiAmino::G
+    /// ]);
+    ///
+    /// assert_eq!(aas1, aas2);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This panics if the supplied literal isn't valid. **Whitespace is NOT allowed**
+    /// because the returned array must have the same length.
+    #[must_use]
+    #[track_caller]
+    pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[AmbiAmino; N]> {
+        Seq(Self::lit(literal))
     }
 
     /// Return iterator of [`Amino`]s that this ambiguous amino acid could be.
@@ -836,6 +888,10 @@ impl Symbol for Amino {
     fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N] {
         Self::lit(literal)
     }
+
+    fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]> {
+        Self::seq(literal)
+    }
 }
 
 impl Symbol for AmbiAmino {
@@ -856,6 +912,10 @@ impl Symbol for AmbiAmino {
 
     fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N] {
         Self::lit(literal)
+    }
+
+    fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]> {
+        Self::seq(literal)
     }
 }
 
