@@ -2,7 +2,7 @@
 
 use crate::iter::{Codons, Translated};
 use crate::translation::GeneticCode;
-use crate::{DnaIter, Nucleotide};
+use crate::{DnaIter, Nucleotide, Seq};
 
 #[cfg(feature = "unsafe")]
 use crate::symbol::sealed::Sealed;
@@ -136,6 +136,42 @@ pub trait DnaSlice {
     /// ```
     fn as_rcodons_mut(&mut self) -> &mut [[Self::Nuc; 3]] {
         self.as_flat_dna_mut().as_rchunks_mut().1
+    }
+
+    /// Wrap slice in [`Seq`].
+    ///
+    /// Alias for [`Seq::wrap`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSlice, Nuc};
+    ///
+    /// let dna = Nuc::seq(b"ACTGACTG");
+    /// let partial_dna = dna[3..6].as_seq();
+    /// assert_eq!(partial_dna, "GAC");
+    /// ```
+    fn as_seq(&self) -> &Seq<Self> {
+        Seq::wrap(self)
+    }
+
+    /// Wrap mutable slice in [`Seq`].
+    ///
+    /// Alias for [`Seq::wrap`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSlice, Nuc};
+    ///
+    /// let mut dna = Nuc::seq(b"ACTGACTG");
+    /// let partial_dna = dna[3..6].as_seq_mut();
+    /// assert_eq!(partial_dna, "GAC");
+    /// partial_dna[1] = Nuc::C;
+    /// assert_eq!(dna, "ACTGCCTG");
+    /// ```
+    fn as_seq_mut(&mut self) -> &mut Seq<Self> {
+        Seq::wrap_mut(self)
     }
 
     /// Return all 3 reading frames of codons

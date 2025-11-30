@@ -3,6 +3,8 @@ use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
+use ref_cast::{RefCastCustom, ref_cast_custom};
+
 use crate::error::ParseSeqError;
 use crate::translation::GeneticCode;
 use crate::{DnaIter, DnaSlice, Nucleotide, Symbol};
@@ -69,10 +71,49 @@ use crate::{DnaIter, DnaSlice, Nucleotide, Symbol};
 ///
 /// * **`serde`:** When enabled, [`Seq<T>`] is serializable (as a string) whenever it has a
 ///   [`Display`] impl, and deserializable whenever it has a [`FromStr`] impl.
-#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Seq<T>(pub T);
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, RefCastCustom)]
+#[repr(transparent)]
+pub struct Seq<T: ?Sized>(pub T);
 
-impl<T> Seq<T> {
+impl<T: ?Sized> Seq<T> {
+    /// Wrap a reference in a [`Seq`].
+    ///
+    /// Most of `Seq`'s features (e.g. [`Display`] impl or string comparisons) work for
+    /// `&Seq<[T]>` but not `Seq<&[T]>`, so `Seq::wrap(slice)` should be prefered
+    /// over `Seq(slice)`. For convenience, there's also [`DnaSlice::as_seq`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{Nuc, Seq};
+    ///
+    /// let dna = Nuc::lit(b"ACTGACTG");
+    /// let partial_dna = Seq::wrap(&dna[3..6]);
+    /// assert_eq!(partial_dna, "GAC");
+    /// ```
+    #[ref_cast_custom]
+    pub fn wrap(slice: &T) -> &Self;
+
+    /// Wrap a mutable reference in a [`Seq`].
+    ///
+    /// Most of `Seq`'s features (e.g. [`Display`] impl or string comparisons) work for
+    /// `&mut Seq<[T]>` but not `Seq<&mut [T]>`, so `Seq::wrap_mut(slice)` should be prefered
+    /// over `Seq(slice)`. For convenience, there's also [`DnaSlice::as_seq_mut`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{Nuc, Seq};
+    ///
+    /// let mut dna = Nuc::seq(b"ACTGACTG");
+    /// let partial_dna = Seq::wrap_mut(&mut dna[3..6]);
+    /// assert_eq!(partial_dna, "GAC");
+    /// partial_dna[1] = Nuc::C;
+    /// assert_eq!(dna, "ACTGCCTG");
+    /// ```
+    #[ref_cast_custom]
+    pub fn wrap_mut(slice: &mut T) -> &mut Self;
+
     /// Translate codons into [`Seq`]-wrapped peptide.
     ///
     /// This should work with a wider variety of collections, but may be slower as a result.
@@ -251,7 +292,7 @@ impl<T> Seq<T> {
     }
 }
 
-impl<T> Deref for Seq<T> {
+impl<T: ?Sized> Deref for Seq<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -259,7 +300,7 @@ impl<T> Deref for Seq<T> {
     }
 }
 
-impl<T> DerefMut for Seq<T> {
+impl<T: ?Sized> DerefMut for Seq<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
     }
@@ -283,7 +324,7 @@ impl<T: IntoIterator> IntoIterator for Seq<T> {
     }
 }
 
-impl<T, S> PartialEq<&str> for Seq<T>
+impl<T: ?Sized, S> PartialEq<&str> for Seq<T>
 where
     for<'a> &'a T: IntoIterator<Item = &'a S>,
     S: Symbol,
@@ -293,7 +334,7 @@ where
     }
 }
 
-impl<T, S> PartialEq<str> for Seq<T>
+impl<T: ?Sized, S> PartialEq<str> for Seq<T>
 where
     for<'a> &'a T: IntoIterator<Item = &'a S>,
     S: Symbol,
@@ -303,7 +344,7 @@ where
     }
 }
 
-impl<T> Display for Seq<T>
+impl<T: ?Sized> Display for Seq<T>
 where
     for<'a> &'a T: IntoIterator<Item: Display>,
 {
@@ -312,7 +353,7 @@ where
     }
 }
 
-impl<T> Debug for Seq<T>
+impl<T: ?Sized> Debug for Seq<T>
 where
     for<'a> &'a T: IntoIterator<Item: Display>,
 {
@@ -454,7 +495,8 @@ mod tests {
 
     #[test]
     fn sanity_check_that_seq_works_with_slices() {
-        let dna = Seq(&Nuc::lit(b"ACGT"));
+        let dna = Seq::wrap(const { &Nuc::lit(b"ACGT") });
+        assert_eq!(dna, "ACGT");
         let peptide = dna.translated_to_vec_by(NCBI1);
         assert_eq!(peptide, "T");
     }
