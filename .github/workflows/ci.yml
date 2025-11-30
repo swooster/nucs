@@ -36,6 +36,18 @@ jobs:
         VERSION_RANGE='["1.'$(seq -s'","1.' "$REQUIRED_VERSION" "$TOOLCHAIN_VERSION")'"]'
         echo "Supported rust versions: $VERSION_RANGE"
         echo "rust-versions=$VERSION_RANGE" >> $GITHUB_OUTPUT
+    - name: Check if RELEASES.md was updated
+      continue-on-error: true
+      run: |
+        git fetch --quiet --depth=1 origin \
+            "+refs/heads/${{github.base_ref}}:refs/remotes/origin/${{github.base_ref}}"
+        if git diff --exit-code --name-only "origin/${{github.base_ref}}" HEAD -- RELEASES.md; then
+            echo "::warning::RELEASES.md wasn't updated. XYZZY1"
+            echo "::warning file=RELEASES.md,line=1,col=5::RELEASES.md wasn't updated. XYZZY2"
+            exit 1
+        else
+            echo "RELEASES.md was updated."
+        fi
 
   tests:
     name: Tests
