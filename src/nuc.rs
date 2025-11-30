@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use crate::error::ParseSymbolError;
 use crate::translation::GeneticCode;
-use crate::{AmbiAmino, Amino, Symbol};
+use crate::{AmbiAmino, Amino, Seq, Symbol};
 
 /// Concrete nucleotide
 ///
@@ -141,6 +141,31 @@ impl Nuc {
             i += 1;
         }
         nucs
+    }
+
+    /// Construct [`Seq`]-wrapped [`Nuc`] array from literal without allocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{Nuc, Seq};
+    ///
+    /// let dna1 = Nuc::seq(b"TACT");
+    /// // ...is shorthand for...
+    /// use Nuc::{T, A, C};
+    /// let dna2 = Seq([T, A, C, T]);
+    ///
+    /// assert_eq!(dna1, dna2);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This panics if the supplied literal isn't valid. **Whitespace is NOT allowed**
+    /// because the returned array must have the same length.
+    #[must_use]
+    #[track_caller]
+    pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Nuc; N]> {
+        Seq(Self::lit(literal))
     }
 }
 
@@ -459,6 +484,31 @@ impl AmbiNuc {
         nucs
     }
 
+    /// Construct [`Seq`]-wrapped [`AmbiNuc`] array from literal without allocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, Seq};
+    ///
+    /// let dna1 = AmbiNuc::seq(b"NASTYGRAM");
+    /// // ...is shorthand for...
+    /// use AmbiNuc::{N, A, S, T, Y, G, R, M};
+    /// let dna2 = Seq([N, A, S, T, Y, G, R, A, M]);
+    ///
+    /// assert_eq!(dna1, dna2);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This panics if the supplied literal isn't valid. **Whitespace is NOT allowed**
+    /// because the returned array must have the same length.
+    #[must_use]
+    #[track_caller]
+    pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[AmbiNuc; N]> {
+        Seq(Self::lit(literal))
+    }
+
     pub(crate) fn from_u8(byte: u8) -> Option<Self> {
         // (hopefully) efficiently match u8 against repr(u8) of enum
         // e.g. from_u8!(byte, A B C)
@@ -714,6 +764,10 @@ impl Symbol for Nuc {
     fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N] {
         Self::lit(literal)
     }
+
+    fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]> {
+        Self::seq(literal)
+    }
 }
 
 impl Symbol for AmbiNuc {
@@ -734,6 +788,10 @@ impl Symbol for AmbiNuc {
 
     fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N] {
         Self::lit(literal)
+    }
+
+    fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]> {
+        Self::seq(literal)
     }
 }
 
