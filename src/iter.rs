@@ -165,7 +165,7 @@ pub trait DnaIter: Iterator {
     ///
     /// let peptide: Seq<Vec<_>> =
     ///     Nuc::lit(b"TATGCGAGAAAC").into_iter().translate(NCBI1).collect();
-    /// assert_eq!(peptide.to_string(), "YARN");
+    /// assert_eq!(peptide, "YARN");
     /// ```
     fn translate<N, G>(self, genetic_code: G) -> Translated<G, Codons<N, Self>>
     where
@@ -528,11 +528,11 @@ mod tests {
     fn complemented_type_inference() {
         let mut dna = Nuc::lit(b"AAAACCCGGT");
         let vals: Seq<Vec<_>> = anon_vals(dna).into_iter().complemented().collect();
-        assert_eq!(vals.to_string(), "TTTTGGGCCA");
+        assert_eq!(vals, "TTTTGGGCCA");
         let refs: Seq<Vec<_>> = anon_refs(&dna).into_iter().complemented().collect();
-        assert_eq!(refs.to_string(), "TTTTGGGCCA");
+        assert_eq!(refs, "TTTTGGGCCA");
         let muts: Seq<Vec<_>> = anon_muts(&mut dna).into_iter().complemented().collect();
-        assert_eq!(muts.to_string(), "TTTTGGGCCA");
+        assert_eq!(muts, "TTTTGGGCCA");
     }
 
     #[test]
@@ -559,23 +559,11 @@ mod tests {
     #[test]
     fn codons_type_inference() {
         let mut dna = Nuc::lit(b"AAAACCCGGT");
-        let vals: Vec<_> = anon_vals(dna)
-            .into_iter()
-            .codons()
-            .map(|c| Seq(c).to_string())
-            .collect();
+        let vals: Vec<_> = anon_vals(dna).into_iter().codons().map(Seq).collect();
         assert_eq!(vals, ["AAA", "ACC", "CGG"]);
-        let refs: Vec<_> = anon_refs(&dna)
-            .into_iter()
-            .codons()
-            .map(|c| Seq(c).to_string())
-            .collect();
+        let refs: Vec<_> = anon_refs(&dna).into_iter().codons().map(Seq).collect();
         assert_eq!(refs, ["AAA", "ACC", "CGG"]);
-        let muts: Vec<_> = anon_muts(&mut dna)
-            .into_iter()
-            .codons()
-            .map(|c| Seq(c).to_string())
-            .collect();
+        let muts: Vec<_> = anon_muts(&mut dna).into_iter().codons().map(Seq).collect();
         assert_eq!(muts, ["AAA", "ACC", "CGG"]);
     }
 
@@ -625,11 +613,11 @@ mod tests {
     fn translate_type_inference() {
         let mut dna = Nuc::lit(b"AAAACCCGGT");
         let vals: Seq<Vec<_>> = anon_vals(dna).into_iter().translate(NCBI1).collect();
-        assert_eq!(vals.to_string(), "KTR");
+        assert_eq!(vals, "KTR");
         let refs: Seq<Vec<_>> = anon_refs(&dna).into_iter().translate(NCBI1).collect();
-        assert_eq!(refs.to_string(), "KTR");
+        assert_eq!(refs, "KTR");
         let muts: Seq<Vec<_>> = anon_muts(&mut dna).into_iter().translate(NCBI1).collect();
-        assert_eq!(muts.to_string(), "KTR");
+        assert_eq!(muts, "KTR");
     }
 
     #[test]

@@ -26,22 +26,26 @@ use crate::error::ParseSeqError;
 ///     ATAC
 /// ".parse()?;
 /// // `Seq` implements `Display`:
-/// assert_eq!(dna.to_string(), "ACATATAC");
+/// assert_eq!(dna, "ACATATAC");
 /// // If alternate formatting is used, the sequence is line-wrapped according to the width:
 /// assert_eq!(format!("{dna:#5}"), "ACATA\nTAC");
 ///
+/// // For testing convenience, you can directly compare `Seq<T>` to strings:
+/// // (whitespace and case are ignored)
+/// assert_eq!(dna, "    A cat ATAC");
+///
 /// // You can still work with the underlying collection:
 /// dna[2..].fill(Nuc::G);
-/// assert_eq!(dna.to_string(), "ACGGGGGG");
+/// assert_eq!(dna, "ACGGGGGG");
 ///
 /// // Other collections than `Vec` are supported:
 /// let mut dna = Seq(VecDeque::from_iter(dna));
 /// dna.push_front(Nuc::T);
-/// assert_eq!(dna.to_string(), "TACGGGGGG");
+/// assert_eq!(dna, "TACGGGGGG");
 ///
 /// // `AmbiNuc` and `Amino` are supported as well:
 /// let peptide: Seq<Vec<Amino>> = "INTEROP".parse()?;
-/// assert_eq!(peptide.to_string(), "INTEROP");
+/// assert_eq!(peptide, "INTEROP");
 /// # Ok(())
 /// # }
 /// ```
@@ -96,6 +100,26 @@ impl<T: IntoIterator> IntoIterator for Seq<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl<T, S> PartialEq<&str> for Seq<T>
+where
+    for<'a> &'a T: IntoIterator<Item = &'a S>,
+    S: Symbol,
+{
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl<T, S> PartialEq<str> for Seq<T>
+where
+    for<'a> &'a T: IntoIterator<Item = &'a S>,
+    S: Symbol,
+{
+    fn eq(&self, rhs: &str) -> bool {
+        self.into_iter().copied().map(Ok).eq(iter_symbols(rhs))
     }
 }
 

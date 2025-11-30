@@ -10,6 +10,7 @@
 * Add `Clone` and `Debug` impls for `FastTranslator`. (#25)
 * Add `FastTranslator::from_genetic_code` and tweak `FastTranslator::from_table` to take
   table reference instead of value. (#26)
+* Allow `Seq` to be compared to strings. (#28)
 
 ## Version 0.2.0 (2025-11-24)
 
