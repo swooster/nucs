@@ -10,6 +10,7 @@
 * Add `Clone` and `Debug` impls for `FastTranslator`. (#25)
 * Add `FastTranslator::from_genetic_code` and tweak `FastTranslator::from_table` to take
   table reference instead of value. (#26)
+* Support faster RC translation by folding complementation in to translation. (#27)
 * Add `Seq::translated_*` methods. (#30)
 * Rename `DnaSlice::translate_*` methods. (#31)
 * Allow `Seq` to be compared to strings. (#28)
