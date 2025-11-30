@@ -227,7 +227,7 @@ impl FastTranslator {
     /// assert_eq!(ncbi1_rc.translate([C, A, T]), Amino::M);
     /// ```
     ///
-    /// This is useful in combination with methods like [`DnaSlice::rev_translate_to_vec`],
+    /// This is useful in combination with methods like [`DnaSlice::rev_translated_to_vec_by`],
     /// because it allows complementation to folded into translation, reducing the amount of work
     /// needed to produce reverse-complement translations. Actual usage would look something like:
     ///
@@ -236,7 +236,7 @@ impl FastTranslator {
     /// // NCBI1_RC is &NCBI1.reverse_complement()
     ///
     /// let dna = Nuc::lit(b"GCACCGCTAGGTACTGGCGAA");
-    /// let peptide = dna.rev_translate_to_vec(NCBI1_RC);
+    /// let peptide = dna.rev_translated_to_vec_by(NCBI1_RC);
     /// assert_eq!(peptide, Amino::lit(b"FAST*RC"));
     /// ```
     #[must_use]
@@ -522,7 +522,7 @@ mod tests {
     fn fast_lookup_reverse_complement() {
         let ncbi1_rc = const { &NCBI1.reverse_complement() };
         let dna = Nuc::lit(b"ATCTTCGGGGGGAATTAAAAACTAATAAAGTTCAACAATGGTTGGCATCTCTTCCCGGGG");
-        let peptide = dna.rev_translate_to_vec(ncbi1_rc);
+        let peptide = dna.rev_translated_to_vec_by(ncbi1_rc);
         assert_eq!(peptide, Amino::lit(b"PREEMPTIVELY*FLIPPED"));
     }
 

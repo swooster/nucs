@@ -130,7 +130,7 @@ impl<T> Seq<T> {
         [S]: DnaSlice,
         G: GeneticCode,
     {
-        Seq(self.0.as_ref().translate_to_array(genetic_code))
+        Seq(self.0.as_ref().translated_to_array_by(genetic_code))
     }
 
     /// Translate codons into fixed-length [`Seq`]-wrapped  peptide in reverse order.
@@ -178,7 +178,7 @@ impl<T> Seq<T> {
         [S]: DnaSlice,
         G: GeneticCode,
     {
-        Seq(self.0.as_ref().rev_translate_to_array(genetic_code))
+        Seq(self.0.as_ref().rev_translated_to_array_by(genetic_code))
     }
 
     /// Translate codons into [`Seq`]-wrapped peptide [`Vec`].
@@ -203,7 +203,7 @@ impl<T> Seq<T> {
         [S]: DnaSlice,
         G: GeneticCode,
     {
-        Seq(self.0.as_ref().translate_to_vec(genetic_code))
+        Seq(self.0.as_ref().translated_to_vec_by(genetic_code))
     }
 
     /// Translate codons into [`Seq`]-wrapped peptide [`Vec`] in reverse order.
@@ -247,7 +247,7 @@ impl<T> Seq<T> {
         [S]: DnaSlice,
         G: GeneticCode,
     {
-        Seq(self.0.as_ref().rev_translate_to_vec(genetic_code))
+        Seq(self.0.as_ref().rev_translated_to_vec_by(genetic_code))
     }
 }
 
