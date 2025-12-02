@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    types: [opened, synchronize, labeled, unlabeled]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+
+  setup:
+    name: Check if `RELEASES.md` was updated.
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check if RELEASES.md was updated
+      env:
+        LABELS: ${{toJSON(github.event.pull_request.labels)}}
+      run: |
+        git fetch --quiet --depth=1 origin \
+            "+refs/heads/${{github.base_ref}}:refs/remotes/origin/${{github.base_ref}}"
+        if git diff --exit-code --name-only "origin/${{github.base_ref}}" HEAD -- RELEASES.md; then
+            if echo "$LABELS" | jq -e 'any(.[]; .name == "no release notes")' > /dev/null; then
+                echo "RELEASES.md deliberately skipped."
+            else
+                echo -n "::warning file=RELEASES.md::RELEASES.md wasn't updated. "
+                echo "If that's intentional, label the PR as a \`refactor\`."
+                exit 1
+            fi
+        else
+            echo "RELEASES.md was updated."
+        fi
