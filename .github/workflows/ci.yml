@@ -96,3 +96,13 @@ jobs:
         run: cargo miri setup
       - name: Run Miri
         run: cargo miri test --features all
+
+  # Provide a single check for branch protection rules to rely on
+  # (needed due to the tests matrix)
+  ci-passed:
+    name: Everything passed
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    needs: [ tests, nightly ]
+    steps:
+        - run: echo "CI passed!"
