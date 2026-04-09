@@ -59,7 +59,7 @@ jobs:
     - name: Check formatting
       run: cargo fmt --check --all
     - name: Clippy # ensure nothing depends on test-only code
-      run: cargo clippy --features "${{matrix.features}}" -- --deny warnings
+      run: cargo clippy --features "${{matrix.features}}" --benches -- --deny warnings
     - name: Clippy (with tests) # find code-smells in tests
       run: cargo clippy --features "${{matrix.features}}" --tests -- --deny warnings
     - name: Run tests
