@@ -27,7 +27,7 @@ jobs:
                 echo "RELEASES.md deliberately skipped."
             else
                 echo -n "::warning file=RELEASES.md::RELEASES.md wasn't updated. "
-                echo "If that's intentional, label the PR as a \`refactor\`."
+                echo "If that's intentional, label the PR as \`no release notes\`."
                 exit 1
             fi
         else
