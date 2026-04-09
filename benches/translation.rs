@@ -1,7 +1,7 @@
 use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng, rngs::StdRng};
 
-use nucs::{AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Nuc};
+use nucs::{AmbiNuc, DnaSlice, NCBI1, Nuc};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let mut rng = StdRng::from_os_rng();
@@ -40,7 +40,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         g.bench_function(BenchmarkId::from_parameter(len), |b| {
             b.iter_batched_ref(
                 || (0..len).map(|_| rng.random()).collect::<Vec<Nuc>>(),
-                |dna| dna.rev_translated_to_vec_by(NCBI1_RC),
+                |dna| dna.rc_translated_to_vec_by(NCBI1),
                 BatchSize::SmallInput,
             )
         });
@@ -53,7 +53,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         g.bench_function(BenchmarkId::from_parameter(len), |b| {
             b.iter_batched_ref(
                 || (0..len).map(|_| rng.random()).collect::<Vec<AmbiNuc>>(),
-                |dna| dna.rev_translated_to_vec_by(NCBI1_RC),
+                |dna| dna.rc_translated_to_vec_by(NCBI1),
                 BatchSize::SmallInput,
             )
         });
