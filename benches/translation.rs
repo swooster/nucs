@@ -14,7 +14,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         g.bench_function(BenchmarkId::from_parameter(len), |b| {
             b.iter_batched_ref(
                 || (0..len).map(|_| rng.random()).collect::<Vec<Nuc>>(),
-                |dna| dna.translate_to_vec(NCBI1),
+                |dna| dna.translated_to_vec_by(NCBI1),
                 BatchSize::SmallInput,
             )
         });
@@ -27,7 +27,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         g.bench_function(BenchmarkId::from_parameter(len), |b| {
             b.iter_batched_ref(
                 || (0..len).map(|_| rng.random()).collect::<Vec<AmbiNuc>>(),
-                |dna| dna.translate_to_vec(NCBI1),
+                |dna| dna.translated_to_vec_by(NCBI1),
                 BatchSize::SmallInput,
             )
         });
@@ -40,7 +40,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         g.bench_function(BenchmarkId::from_parameter(len), |b| {
             b.iter_batched_ref(
                 || (0..len).map(|_| rng.random()).collect::<Vec<Nuc>>(),
-                |dna| dna.rev_translate_to_vec(NCBI1_RC),
+                |dna| dna.rev_translated_to_vec_by(NCBI1_RC),
                 BatchSize::SmallInput,
             )
         });
@@ -53,7 +53,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         g.bench_function(BenchmarkId::from_parameter(len), |b| {
             b.iter_batched_ref(
                 || (0..len).map(|_| rng.random()).collect::<Vec<AmbiNuc>>(),
-                |dna| dna.rev_translate_to_vec(NCBI1_RC),
+                |dna| dna.rev_translated_to_vec_by(NCBI1_RC),
                 BatchSize::SmallInput,
             )
         });
