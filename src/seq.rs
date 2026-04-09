@@ -222,6 +222,33 @@ impl<T: ?Sized> Seq<T> {
         Seq(self.0.as_ref().rev_translated_to_array_by(genetic_code))
     }
 
+    /// Translate reverse complement of nucleotides into fixed-length peptide.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, NCBI1, Seq};
+    ///
+    /// let dna = AmbiNuc::seq(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide: Seq<[_; 7]> = dna.rc_translated_to_array_by(NCBI1);
+    /// assert_eq!(peptide, "FAST*RC");
+    /// ```
+    pub fn rc_translated_to_array_by<S, G, const N: usize>(
+        &self,
+        genetic_code: G,
+    ) -> Seq<[<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino; N]>
+    where
+        T: AsRef<[S]>,
+        [S]: DnaSlice,
+        G: GeneticCode,
+    {
+        Seq(self.0.as_ref().rc_translated_to_array_by(genetic_code))
+    }
+
     /// Translate codons into [`Seq`]-wrapped peptide [`Vec`].
     ///
     /// For large sequences, this is usually much faster than populating directly from an iterator.
@@ -289,6 +316,29 @@ impl<T: ?Sized> Seq<T> {
         G: GeneticCode,
     {
         Seq(self.0.as_ref().rev_translated_to_vec_by(genetic_code))
+    }
+
+    /// Translate reverse complement of nucleotides into peptide [`Vec`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, NCBI1};
+    ///
+    /// let dna = AmbiNuc::seq(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.rc_translated_to_vec_by(NCBI1);
+    /// assert_eq!(peptide, "FAST*RC");
+    /// ```
+    pub fn rc_translated_to_vec_by<S, G>(
+        &self,
+        genetic_code: G,
+    ) -> Seq<Vec<<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino>>
+    where
+        T: AsRef<[S]>,
+        [S]: DnaSlice,
+        G: GeneticCode,
+    {
+        Seq(self.0.as_ref().rc_translated_to_vec_by(genetic_code))
     }
 }
 

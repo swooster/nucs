@@ -284,6 +284,27 @@ pub trait DnaSlice {
         peptide
     }
 
+    /// Translate reverse complement of nucleotides into peptide [`Vec`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
+    ///
+    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.rc_translated_to_vec_by(NCBI1);
+    /// assert_eq!(Seq(peptide), "FAST*RC");
+    /// ```
+    fn rc_translated_to_vec_by<G: GeneticCode>(
+        &self,
+        genetic_code: G,
+    ) -> Vec<<Self::Nuc as Nucleotide>::Amino> {
+        let codons = self.as_rcodons();
+        let mut peptide = vec![Default::default(); codons.len()];
+        codons.rc_translated_to_buf_by(genetic_code, &mut peptide);
+        peptide
+    }
+
     /// Translate codons into fixed-length peptide.
     ///
     /// # Panics
@@ -350,6 +371,30 @@ pub trait DnaSlice {
     ) -> [<Self::Nuc as Nucleotide>::Amino; N] {
         let mut buf = [Default::default(); _];
         self.rev_translated_to_buf_by(genetic_code, &mut buf);
+        buf
+    }
+
+    /// Translate reverse complement of nucleotides into fixed-length peptide.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
+    ///
+    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide: [_; 7] = dna.rc_translated_to_array_by(NCBI1);
+    /// assert_eq!(Seq(peptide), "FAST*RC");
+    /// ```
+    fn rc_translated_to_array_by<G: GeneticCode, const N: usize>(
+        &self,
+        genetic_code: G,
+    ) -> [<Self::Nuc as Nucleotide>::Amino; N] {
+        let mut buf = [Default::default(); _];
+        self.rc_translated_to_buf_by(genetic_code, &mut buf);
         buf
     }
 
@@ -447,6 +492,44 @@ pub trait DnaSlice {
         }
         for (amino, codon) in amino_remainder.iter_mut().rev().zip(codon_remainder) {
             *amino = genetic_code.translate(*codon);
+        }
+    }
+
+    /// Fill a buffer with amino acids built from translating reverse complement of nucleotides.
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the length of `buf`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
+    ///
+    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let mut peptide: [_; 7] = Default::default();
+    /// dna.rc_translated_to_buf_by(NCBI1, &mut peptide);
+    /// assert_eq!(Seq(peptide), "FAST*RC");
+    /// ```
+    fn rc_translated_to_buf_by<G: GeneticCode>(
+        &self,
+        genetic_code: G,
+        buf: &mut [<Self::Nuc as Nucleotide>::Amino],
+    ) {
+        const CHUNK_LEN: usize = 16;
+        let codons = self.as_rcodons();
+        assert_eq!(codons.len(), buf.len());
+        let (codon_chunks, codon_remainder) = codons.as_chunks::<CHUNK_LEN>();
+        let (amino_remainder, amino_chunks) = buf.as_rchunks_mut::<CHUNK_LEN>();
+        for (aminos, codons) in amino_chunks.iter_mut().rev().zip(codon_chunks) {
+            for (amino, codon) in aminos.iter_mut().rev().zip(codons) {
+                *amino = genetic_code.translate_rc(*codon);
+            }
+        }
+        for (amino, codon) in amino_remainder.iter_mut().rev().zip(codon_remainder) {
+            *amino = genetic_code.translate_rc(*codon);
         }
     }
 
