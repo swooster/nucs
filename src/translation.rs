@@ -427,11 +427,11 @@ impl AmbiLookup {
                 while n3 <= 0x00f {
                     let n1_n2_n3 = n1 | n2 | n3;
                     ambi_lookup[n1_n2_n3] = self.0[reverse_complement_index(n1_n2_n3)];
-                    n3 <<= 1;
+                    n3 += 0x001;
                 }
-                n2 <<= 1;
+                n2 += 0x010;
             }
-            n1 <<= 1;
+            n1 += 0x100;
         }
         Self(ambi_lookup)
     }
