@@ -22,6 +22,26 @@ pub trait GeneticCode {
         N::translate(self, codon)
     }
 
+    /// Translate reverse complement of a codon to an amino acid
+    ///
+    /// Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiAmino, Amino, AmbiNuc, Nuc, translation::GeneticCode};
+    /// use Nuc::{A, G, T};
+    ///
+    /// let genetic_code = |codon: [Nuc; 3]| match codon {
+    ///    [A, T, G] => Amino::W,
+    ///    _ => Amino::Stop,
+    /// };
+    /// assert_eq!(genetic_code.translate_rc(Nuc::lit(b"CAT")), Amino::W);
+    /// assert_eq!(genetic_code.translate_rc(AmbiNuc::lit(b"CAT")), AmbiAmino::W);
+    /// assert_eq!(genetic_code.translate_rc(AmbiNuc::lit(b"ANT")), AmbiAmino::Stop);
+    /// ```
+    fn translate_rc<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
+        N::translate_rc(self, codon)
+    }
+
     /// Translate a concrete codon to an amino acid
     ///
     /// Consider calling [`GeneticCode::translate`] instead; this primarily exists to be provided
@@ -41,6 +61,26 @@ pub trait GeneticCode {
             .map(|codon| AmbiAmino::from(self.translate_concrete_codon(codon)))
             .reduce(|a, b| a | b)
             .expect("BUG: null nucleotide encountered")
+    }
+
+    /// Translate reverse complement of a concrete codon to an amino acid
+    ///
+    /// Consider calling [`GeneticCode::translate_rc`] instead; this primarily exists to be provided
+    /// by implementors of [`GeneticCode`].
+    fn translate_rc_concrete_codon(&self, mut codon: [Nuc; 3]) -> Amino {
+        codon.reverse();
+        codon.complement();
+        self.translate_concrete_codon(codon)
+    }
+
+    /// Translate reverse complement of an ambiguous codon to an amino acid
+    ///
+    /// Consider calling [`GeneticCode::translate_rc`] instead; this primarily exists to be provided
+    /// by implementors of [`GeneticCode`].
+    fn translate_rc_ambiguous_codon(&self, mut codon: [AmbiNuc; 3]) -> AmbiAmino {
+        codon.reverse();
+        codon.complement();
+        self.translate_ambiguous_codon(codon)
     }
 }
 

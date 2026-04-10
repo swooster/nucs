@@ -715,6 +715,12 @@ pub trait Nucleotide: Symbol {
     /// Instead of using this directly, prefer [`GeneticCode::translate`], as that tends to
     /// be clearer.
     fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino;
+
+    /// Translate reverse complement of a codon into an amino acid
+    ///
+    /// Instead of using this directly, prefer [`GeneticCode::translate_rc`], as that tends to
+    /// be clearer.
+    fn translate_rc<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino;
 }
 
 impl Nucleotide for Nuc {
@@ -729,6 +735,10 @@ impl Nucleotide for Nuc {
     fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino {
         genetic_code.translate_concrete_codon(codon)
     }
+
+    fn translate_rc<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino {
+        genetic_code.translate_rc_concrete_codon(codon)
+    }
 }
 
 impl Nucleotide for AmbiNuc {
@@ -742,6 +752,10 @@ impl Nucleotide for AmbiNuc {
 
     fn translate<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino {
         genetic_code.translate_ambiguous_codon(codon)
+    }
+
+    fn translate_rc<G: GeneticCode + ?Sized>(genetic_code: &G, codon: [Self; 3]) -> Self::Amino {
+        genetic_code.translate_rc_ambiguous_codon(codon)
     }
 }
 
