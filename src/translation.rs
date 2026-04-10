@@ -285,15 +285,21 @@ impl ConcreteLookup {
     #[must_use]
     pub const fn reverse_complement(&self) -> Self {
         let mut lookup = [Amino::A; _];
-        let mut i = 0;
-        let max = lookup.len();
-        while i < max {
-            let complement_idx = reverse_complement_index(i);
-            // The gaps in this lookup can be complemented to invalid indices.
-            if complement_idx < max {
-                lookup[i] = self.0[complement_idx];
+        // As before, this could be flattened into a single unnested loop, but this nested
+        // loop results in much sparser work.
+        let mut n1 = 0x100;
+        while n1 <= 0x800 {
+            let mut n2 = 0x010;
+            while n2 <= 0x080 {
+                let mut n3 = 0x001;
+                while n3 <= 0x008 {
+                    let n1_n2_n3 = n1 | n2 | n3;
+                    lookup[n1_n2_n3] = self.0[reverse_complement_index(n1_n2_n3)];
+                    n3 <<= 1;
+                }
+                n2 <<= 1;
             }
-            i += 1;
+            n1 <<= 1;
         }
         Self(lookup)
     }
@@ -411,11 +417,21 @@ impl AmbiLookup {
     #[must_use]
     pub const fn reverse_complement(&self) -> Self {
         let mut ambi_lookup = [AmbiAmino::X; _];
-        let mut i = 0;
-        let max = ambi_lookup.len();
-        while i < max {
-            ambi_lookup[i] = self.0[reverse_complement_index(i)];
-            i += 1;
+        // As before, this could be flattened into a single unnested loop, but this nested
+        // loop results in much sparser work.
+        let mut n1 = 0x100;
+        while n1 <= 0xf00 {
+            let mut n2 = 0x010;
+            while n2 <= 0x0f0 {
+                let mut n3 = 0x001;
+                while n3 <= 0x00f {
+                    let n1_n2_n3 = n1 | n2 | n3;
+                    ambi_lookup[n1_n2_n3] = self.0[reverse_complement_index(n1_n2_n3)];
+                    n3 <<= 1;
+                }
+                n2 <<= 1;
+            }
+            n1 <<= 1;
         }
         Self(ambi_lookup)
     }
