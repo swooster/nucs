@@ -2,22 +2,14 @@
 
 ## Unreleased
 
-* Tweak `Nucleotide::translate`, swapping order of arguments and taking reference. This eliminates
-  a lot of `Clone` bounds in APIs. (#23)
-* Add `GeneticCode::translate` to provide a simpler alternative to `Nucleotide::translate`.
-  Give longer names to `GeneticCode::map_codon` and `GeneticCode::map_ambi_codon`, to better
-  reflect that they're not intended to be used directly. (#24)
-* Add `Clone` and `Debug` impls for `FastTranslator`. (#25)
-* Add `FastTranslator::from_genetic_code` and tweak `FastTranslator::from_table` to take
-  table reference instead of value. (#26)
-* Support faster RC translation by folding complementation in to translation. (#27)
-* Add `Seq::translated_*` methods. (#30)
-* Rename `DnaSlice::translate_*` methods. (#31)
-* Allow `Seq` to be compared to strings. (#28)
-* Add `Symbol::seq` helper. (#29)
-* Add better support for `Seq` slices. (#32)
-* Replace `rev_*` translation methods with `rc_*` translation methods to avoid footgun.
-  Also renamed `FastTranslator` to `FullLookup` and pruned `NCBI1_RC`. (#38)
+* Loads of adjustments to translation. There are now methods on `DnaSlice` and `Seq` to perform
+  reverse complement translation almost as fast as ordinary translation, and a number of
+  translation-related APIs have changed. (#23, #24, #25, #26, #27, #30, #31, #38)
+* Usability improvements to `Seq`:
+  * You can now do e.g. `Nuc::seq(b"ATCG")` as a shorthand for `Seq(Nuc::lit(b"ATCG"))`. (#29)
+  * `Seq` can now wrap slices, not just owned data. (#32)
+  * `Seq` can be compared to strings for easier testing. (#28)
+  * `Seq` now has translation methods. (#30)
 
 ## Version 0.2.0 (2025-11-24)
 
