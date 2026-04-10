@@ -174,54 +174,6 @@ impl<T: ?Sized> Seq<T> {
         Seq(self.0.as_ref().translated_to_array_by(genetic_code))
     }
 
-    /// Translate codons into fixed-length [`Seq`]-wrapped  peptide in reverse order.
-    ///
-    /// This translates codons starting at the end. If the DNA can be converted to codons without
-    /// excess nucleotides, then this produces the exact reverse of the output of
-    /// [`translated_to_array_by`](Self::translated_to_array_by). It's intended to be used with
-    /// [`FullLookup::reverse_complement`](crate::translation::FullLookup::reverse_complement)
-    /// as that speeds up translation by folding the complementation into the translator.
-    ///
-    /// <div class="warning">
-    ///
-    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
-    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
-    ///
-    /// </div>
-    ///
-    /// # Panics
-    ///
-    /// Panics if the number of codons to be translated is different from the returned array.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use nucs::{AmbiNuc, NCBI1, NCBI1_RC, Seq};
-    ///
-    /// let dna = AmbiNuc::seq(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
-    /// let peptide: Seq<[_; 9]> = dna.translated_to_array_by(NCBI1);
-    /// assert_eq!(peptide, "SDRAWKCAB");
-    /// let peptide: Seq<[_; 9]> = dna.rev_translated_to_array_by(NCBI1);
-    /// assert_eq!(peptide, "BACKWARDS");
-    ///
-    /// // The proper way to use this for RC translation is with a reverse-complemented
-    /// // translation table like `NCBI1_RC`.
-    /// let dna = AmbiNuc::seq(b"NGCACCGCTAGGTACTGGCGAA");
-    /// let peptide: Seq<[_; 7]> = dna.rev_translated_to_array_by(NCBI1_RC);
-    /// assert_eq!(peptide, "FAST*RC");
-    /// ```
-    pub fn rev_translated_to_array_by<S, G, const N: usize>(
-        &self,
-        genetic_code: G,
-    ) -> Seq<[<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino; N]>
-    where
-        T: AsRef<[S]>,
-        [S]: DnaSlice,
-        G: GeneticCode,
-    {
-        Seq(self.0.as_ref().rev_translated_to_array_by(genetic_code))
-    }
-
     /// Translate reverse complement of nucleotides into fixed-length peptide.
     ///
     /// # Panics
@@ -272,50 +224,6 @@ impl<T: ?Sized> Seq<T> {
         G: GeneticCode,
     {
         Seq(self.0.as_ref().translated_to_vec_by(genetic_code))
-    }
-
-    /// Translate codons into [`Seq`]-wrapped peptide [`Vec`] in reverse order.
-    ///
-    /// This translates codons starting at the end. If the DNA can be converted to codons without
-    /// excess nucleotides, then this produces the exact reverse of the output of
-    /// [`translated_to_vec_by`](Self::translated_to_vec_by). It's intended to be used with
-    /// [`FullLookup::reverse_complement`](crate::translation::FullLookup::reverse_complement)
-    /// as that speeds up translation by folding the complementation into the translator.
-    ///
-    /// <div class="warning">
-    ///
-    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
-    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
-    ///
-    /// </div>
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use nucs::{AmbiNuc, NCBI1, NCBI1_RC};
-    ///
-    /// let dna = AmbiNuc::seq(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
-    /// let peptide = dna.translated_to_vec_by(NCBI1);
-    /// assert_eq!(peptide, "SDRAWKCAB");
-    /// let peptide = dna.rev_translated_to_vec_by(NCBI1);
-    /// assert_eq!(peptide, "BACKWARDS");
-    ///
-    /// // The proper way to use this for RC translation is with a reverse-complemented
-    /// // translation table like `NCBI1_RC`.
-    /// let dna = AmbiNuc::seq(b"NGCACCGCTAGGTACTGGCGAA");
-    /// let peptide = dna.rev_translated_to_vec_by(NCBI1_RC);
-    /// assert_eq!(peptide, "FAST*RC");
-    /// ```
-    pub fn rev_translated_to_vec_by<S, G>(
-        &self,
-        genetic_code: G,
-    ) -> Seq<Vec<<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino>>
-    where
-        T: AsRef<[S]>,
-        [S]: DnaSlice,
-        G: GeneticCode,
-    {
-        Seq(self.0.as_ref().rev_translated_to_vec_by(genetic_code))
     }
 
     /// Translate reverse complement of nucleotides into peptide [`Vec`].
