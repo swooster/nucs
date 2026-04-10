@@ -163,11 +163,13 @@ pub trait DnaIter: Iterator {
     /// ```
     /// use nucs::{DnaIter, NCBI1, Nuc, Seq};
     ///
-    /// let peptide: Seq<Vec<_>> =
-    ///     Nuc::lit(b"TATGCGAGAAAC").into_iter().translate(NCBI1).collect();
+    /// let peptide: Seq<Vec<_>> = Nuc::lit(b"TATGCGAGAAAC")
+    ///     .into_iter()
+    ///     .translated_by(NCBI1)
+    ///     .collect();
     /// assert_eq!(peptide, "YARN");
     /// ```
-    fn translate<N, G>(self, genetic_code: G) -> Translated<G, Codons<N, Self>>
+    fn translated_by<N, G>(self, genetic_code: G) -> Translated<G, Codons<N, Self>>
     where
         Self: Sized + Iterator<Item: AsRef<N>>,
         N: Nucleotide,
@@ -302,7 +304,8 @@ where
 
 /// An iterator that translates codons via a [`GeneticCode`].
 ///
-/// This can be created by the [`DnaIter::translate`] method. See its documentation for details.
+/// This can be created by the [`DnaIter::translated_by`] method.
+/// See its documentation for details.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug, Default)]
 pub struct Translated<G, I> {
@@ -612,11 +615,14 @@ mod tests {
     #[test]
     fn translate_type_inference() {
         let mut dna = Nuc::lit(b"AAAACCCGGT");
-        let vals: Seq<Vec<_>> = anon_vals(dna).into_iter().translate(NCBI1).collect();
+        let vals: Seq<Vec<_>> = anon_vals(dna).into_iter().translated_by(NCBI1).collect();
         assert_eq!(vals, "KTR");
-        let refs: Seq<Vec<_>> = anon_refs(&dna).into_iter().translate(NCBI1).collect();
+        let refs: Seq<Vec<_>> = anon_refs(&dna).into_iter().translated_by(NCBI1).collect();
         assert_eq!(refs, "KTR");
-        let muts: Seq<Vec<_>> = anon_muts(&mut dna).into_iter().translate(NCBI1).collect();
+        let muts: Seq<Vec<_>> = anon_muts(&mut dna)
+            .into_iter()
+            .translated_by(NCBI1)
+            .collect();
         assert_eq!(muts, "KTR");
     }
 

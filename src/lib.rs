@@ -93,7 +93,7 @@
 //! let mut infinite_peptide = Nuc::lit(b"CAT")
 //!     .into_iter()
 //!     .cycle()
-//!     .translate(NCBI1);
+//!     .translated_by(NCBI1);
 //! assert_eq!(infinite_peptide.next(), Some(Amino::H));
 //!
 //! // Slices support much faster translation, and it's possible to

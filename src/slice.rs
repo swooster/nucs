@@ -209,14 +209,16 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let peptide: Seq<Vec<_>> = Nuc::lit(b"TATGCGAGAAAC").translate(NCBI1).collect();
+    /// let peptide: Seq<Vec<_>> = Nuc::lit(b"TATGCGAGAAAC")
+    ///     .translated_by(NCBI1)
+    ///     .collect();
     /// assert_eq!(peptide, "YARN");
     /// ```
-    fn translate<G: GeneticCode>(
+    fn translated_by<G: GeneticCode>(
         &self,
         genetic_code: G,
     ) -> Translated<G, Codons<Self::Nuc, std::slice::Iter<'_, Self::Nuc>>> {
-        self.as_flat_dna().iter().translate(genetic_code)
+        self.as_flat_dna().iter().translated_by(genetic_code)
     }
 
     /// Translate codons into peptide [`Vec`].
@@ -559,9 +561,9 @@ mod tests {
     #[test]
     fn translated_type_inference() {
         let mut dna = Nuc::lit(b"AAAACCCGGT");
-        let peptide: Seq<Vec<_>> = anon_slice(&dna).translate(NCBI1).collect();
+        let peptide: Seq<Vec<_>> = anon_slice(&dna).translated_by(NCBI1).collect();
         assert_eq!(peptide, "KTR");
-        let peptide: Seq<Vec<_>> = anon_mut_slice(&mut dna).translate(NCBI1).collect();
+        let peptide: Seq<Vec<_>> = anon_mut_slice(&mut dna).translated_by(NCBI1).collect();
         assert_eq!(peptide, "KTR");
     }
 
