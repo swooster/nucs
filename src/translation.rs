@@ -686,6 +686,42 @@ mod tests {
         assert_eq!(peptide, Amino::lit(b"PREEMPTIVELY*FLIPPED"));
     }
 
+    #[test]
+    fn exhaustively_test_reverse_complement_concrete_lookups() {
+        for n1 in Nuc::ALL {
+            for n2 in Nuc::ALL {
+                for n3 in Nuc::ALL {
+                    let codon = [n1, n2, n3];
+                    let mut codon_rc = codon;
+                    codon_rc.revcomp();
+                    assert_eq!(
+                        NCBI1.translate_rc(codon),
+                        NCBI1.translate(codon_rc),
+                        "Mismatch for {codon:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn exhaustively_test_reverse_complement_ambiguous_lookups() {
+        for n1 in AmbiNuc::ALL {
+            for n2 in AmbiNuc::ALL {
+                for n3 in AmbiNuc::ALL {
+                    let codon = [n1, n2, n3];
+                    let mut codon_rc = codon;
+                    codon_rc.revcomp();
+                    assert_eq!(
+                        NCBI1.translate_rc(codon),
+                        NCBI1.translate(codon_rc),
+                        "Mismatch for {codon:?}"
+                    );
+                }
+            }
+        }
+    }
+
     fn assert_genetic_codes_eq(g1: &impl GeneticCode, g2: &impl GeneticCode) {
         for n1 in Nuc::ALL {
             for n2 in Nuc::ALL {
