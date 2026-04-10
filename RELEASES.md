@@ -16,6 +16,8 @@
 * Allow `Seq` to be compared to strings. (#28)
 * Add `Symbol::seq` helper. (#29)
 * Add better support for `Seq` slices. (#32)
+* Replace `rev_*` translation methods with `rc_*` translation methods to avoid footgun.
+  Also renamed `FastTranslator` to `FullLookup` and pruned `NCBI1_RC`. (#38)
 
 ## Version 0.2.0 (2025-11-24)
 

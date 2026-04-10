@@ -242,45 +242,24 @@ pub trait DnaSlice {
         peptide
     }
 
-    /// Translate codons into peptide [`Vec`] in reverse order.
-    ///
-    /// This translates codons starting at the end. If the DNA can be converted to codons without
-    /// excess nucleotides, then this produces the exact reverse of the output of
-    /// [`translated_to_vec_by`](Self::translated_to_vec_by). It's intended to be used with
-    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement)
-    /// as that speeds up translation by folding the complementation into the translator.
-    ///
-    /// <div class="warning">
-    ///
-    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
-    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
-    ///
-    /// </div>
+    /// Translate reverse complement of nucleotides into peptide [`Vec`].
     ///
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
     ///
-    /// let dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
-    /// let peptide = dna.translated_to_vec_by(NCBI1);
-    /// assert_eq!(Seq(peptide), "SDRAWKCAB");
-    /// let peptide = dna.rev_translated_to_vec_by(NCBI1);
-    /// assert_eq!(Seq(peptide), "BACKWARDS");
-    ///
-    /// // The proper way to use this for RC translation is with a reverse-complemented
-    /// // translation table like `NCBI1_RC`.
     /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
-    /// let peptide = dna.rev_translated_to_vec_by(NCBI1_RC);
+    /// let peptide = dna.rc_translated_to_vec_by(NCBI1);
     /// assert_eq!(Seq(peptide), "FAST*RC");
     /// ```
-    fn rev_translated_to_vec_by<G: GeneticCode>(
+    fn rc_translated_to_vec_by<G: GeneticCode>(
         &self,
         genetic_code: G,
     ) -> Vec<<Self::Nuc as Nucleotide>::Amino> {
         let codons = self.as_rcodons();
         let mut peptide = vec![Default::default(); codons.len()];
-        codons.rev_translated_to_buf_by(genetic_code, &mut peptide);
+        codons.rc_translated_to_buf_by(genetic_code, &mut peptide);
         peptide
     }
 
@@ -308,20 +287,7 @@ pub trait DnaSlice {
         buf
     }
 
-    /// Translate codons into fixed-length peptide in reverse order.
-    ///
-    /// This translates codons starting at the end. If the DNA can be converted to codons without
-    /// excess nucleotides, then this produces the exact reverse of the output of
-    /// [`translated_to_array_by`](Self::translated_to_array_by). It's intended to be used with
-    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement)
-    /// as that speeds up translation by folding the complementation into the translator.
-    ///
-    /// <div class="warning">
-    ///
-    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
-    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
-    ///
-    /// </div>
+    /// Translate reverse complement of nucleotides into fixed-length peptide.
     ///
     /// # Panics
     ///
@@ -330,26 +296,18 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
     ///
-    /// let dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
-    /// let peptide: [_; 9] = dna.translated_to_array_by(NCBI1);
-    /// assert_eq!(Seq(peptide), "SDRAWKCAB");
-    /// let peptide: [_; 9] = dna.rev_translated_to_array_by(NCBI1);
-    /// assert_eq!(Seq(peptide), "BACKWARDS");
-    ///
-    /// // The proper way to use this for RC translation is with a reverse-complemented
-    /// // translation table like `NCBI1_RC`.
     /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
-    /// let peptide: [_; 7] = dna.rev_translated_to_array_by(NCBI1_RC);
+    /// let peptide: [_; 7] = dna.rc_translated_to_array_by(NCBI1);
     /// assert_eq!(Seq(peptide), "FAST*RC");
     /// ```
-    fn rev_translated_to_array_by<G: GeneticCode, const N: usize>(
+    fn rc_translated_to_array_by<G: GeneticCode, const N: usize>(
         &self,
         genetic_code: G,
     ) -> [<Self::Nuc as Nucleotide>::Amino; N] {
         let mut buf = [Default::default(); _];
-        self.rev_translated_to_buf_by(genetic_code, &mut buf);
+        self.rc_translated_to_buf_by(genetic_code, &mut buf);
         buf
     }
 
@@ -391,21 +349,9 @@ pub trait DnaSlice {
         }
     }
 
-    /// Fill a buffer with amino acids built from translating codons in reverse.
+    /// Fill a buffer with amino acids built from translating reverse complement of nucleotides.
     ///
     /// For large sequences, this is usually much faster than populating directly from an iterator.
-    ///
-    /// This translates codons starting at the end. If the DNA can be converted to codons without
-    /// excess nucleotides, then this produces the exact reverse of the output of
-    /// [`translated_to_buf_by`](Self::translated_to_buf_by). It's intended to be used with
-    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement).
-    ///
-    /// <div class="warning">
-    ///
-    /// **BEWARE:** This translates the *codons* in reverse order, *not* the nucleotides.
-    /// The `SDRAWKCAB`/`BACKWARDS` example below demonstrates this.
-    ///
-    /// </div>
     ///
     /// # Panics
     ///
@@ -414,23 +360,14 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, NCBI1_RC, Seq};
+    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
     ///
-    /// let mut dna = AmbiNuc::lit(b"AGCGATAGGGCCTGGAAATGTGCCRAY");
-    /// let mut peptide: [_; 9] = Default::default();
-    /// dna.translated_to_buf_by(NCBI1, &mut peptide);
-    /// assert_eq!(Seq(peptide), "SDRAWKCAB");
-    /// dna.rev_translated_to_buf_by(NCBI1, &mut peptide);
-    /// assert_eq!(Seq(peptide), "BACKWARDS");
-    ///
-    /// // The proper way to use this for RC translation is with a reverse-complemented
-    /// // translation table like `NCBI1_RC`.
     /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
     /// let mut peptide: [_; 7] = Default::default();
-    /// dna.rev_translated_to_buf_by(NCBI1_RC, &mut peptide);
+    /// dna.rc_translated_to_buf_by(NCBI1, &mut peptide);
     /// assert_eq!(Seq(peptide), "FAST*RC");
     /// ```
-    fn rev_translated_to_buf_by<G: GeneticCode>(
+    fn rc_translated_to_buf_by<G: GeneticCode>(
         &self,
         genetic_code: G,
         buf: &mut [<Self::Nuc as Nucleotide>::Amino],
@@ -442,11 +379,11 @@ pub trait DnaSlice {
         let (amino_remainder, amino_chunks) = buf.as_rchunks_mut::<CHUNK_LEN>();
         for (aminos, codons) in amino_chunks.iter_mut().rev().zip(codon_chunks) {
             for (amino, codon) in aminos.iter_mut().rev().zip(codons) {
-                *amino = genetic_code.translate(*codon);
+                *amino = genetic_code.translate_rc(*codon);
             }
         }
         for (amino, codon) in amino_remainder.iter_mut().rev().zip(codon_remainder) {
-            *amino = genetic_code.translate(*codon);
+            *amino = genetic_code.translate_rc(*codon);
         }
     }
 
