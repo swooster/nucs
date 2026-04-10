@@ -106,16 +106,18 @@ impl GeneticCode for &[Amino; 64] {
 
 /// [`GeneticCode`] implementation optimized for speed over space.
 ///
-/// Each [`FastTranslator`] comes with about 18KiB of additional lookup tables,
+/// Each [`FullLookup`] comes with about 18KiB of additional lookup tables,
 /// dramatically improving translation speed, particularly for ambigous codons.
 #[derive(Clone)]
-pub struct FastTranslator {
+pub struct FullLookup {
     lookup: ConcreteLookup,
+    lookup_rc: ConcreteLookup,
     ambi_lookup: AmbiLookup,
+    ambi_lookup_rc: AmbiLookup,
 }
 
-impl FastTranslator {
-    /// Build [`FastTranslator`] from another [`GeneticCode`].
+impl FullLookup {
+    /// Build [`FullLookup`] from another [`GeneticCode`].
     ///
     /// This precalculates every possible ambiguous codon's translation.
     #[must_use]
@@ -126,7 +128,7 @@ impl FastTranslator {
         }))
     }
 
-    /// Build [`FastTranslator`] from a table of [`Amino`]s.
+    /// Build [`FullLookup`] from a table of [`Amino`]s.
     ///
     /// The [`Amino`]s must correspond to all codons in ascending lexicographical order.
     ///
@@ -135,10 +137,14 @@ impl FastTranslator {
     #[must_use]
     pub const fn from_table(table: &[Amino; 64]) -> Self {
         let lookup = ConcreteLookup::from_table(table);
+        let lookup_rc = lookup.reverse_complement();
         let ambi_lookup = lookup.to_ambi_lookup();
+        let ambi_lookup_rc = ambi_lookup.reverse_complement();
         Self {
             lookup,
+            lookup_rc,
             ambi_lookup,
+            ambi_lookup_rc,
         }
     }
 
@@ -177,7 +183,7 @@ impl FastTranslator {
     ///
     /// ```
     /// use nucs::{Amino, Nuc, NCBI1};
-    /// use nucs::translation::{FastTranslator, GeneticCode};
+    /// use nucs::translation::GeneticCode;
     /// use Nuc::{A, C, G, T};
     ///
     /// assert_eq!(NCBI1.translate([A, T, G]), Amino::M);
@@ -201,13 +207,15 @@ impl FastTranslator {
     #[must_use]
     pub const fn reverse_complement(&self) -> Self {
         Self {
-            lookup: self.lookup.reverse_complement(),
-            ambi_lookup: self.ambi_lookup.reverse_complement(),
+            lookup: ConcreteLookup(self.lookup_rc.0),
+            lookup_rc: ConcreteLookup(self.lookup.0),
+            ambi_lookup: AmbiLookup(self.ambi_lookup_rc.0),
+            ambi_lookup_rc: AmbiLookup(self.ambi_lookup.0),
         }
     }
 }
 
-impl GeneticCode for &FastTranslator {
+impl GeneticCode for &FullLookup {
     #[inline(always)]
     fn translate_concrete_codon(&self, codon: [Nuc; 3]) -> Amino {
         (&self.lookup).translate_concrete_codon(codon)
@@ -217,9 +225,19 @@ impl GeneticCode for &FastTranslator {
     fn translate_ambiguous_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
         (&self.ambi_lookup).translate_ambiguous_codon(codon)
     }
+
+    #[inline(always)]
+    fn translate_rc_concrete_codon(&self, codon: [Nuc; 3]) -> Amino {
+        (&self.lookup_rc).translate_concrete_codon(codon)
+    }
+
+    #[inline(always)]
+    fn translate_rc_ambiguous_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
+        (&self.ambi_lookup_rc).translate_ambiguous_codon(codon)
+    }
 }
 
-impl std::fmt::Debug for FastTranslator {
+impl std::fmt::Debug for FullLookup {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.lookup.fmt(f)
     }
@@ -491,80 +509,80 @@ fn fmt_genetic_code(
 /// Standard code
 ///
 /// The reverse complemented version is [`NCBI1_RC`].
-pub const NCBI1: &FastTranslator = &ncbi(0);
+pub const NCBI1: &FullLookup = &ncbi(0);
 /// Standard code (reverse complemented)
 ///
 /// This is the reverse complemented version of [`NCBI1`]. If other genetic codes are needed,
 /// they can be defined like so:
 /// ```
-/// use nucs::translation::{FastTranslator, NCBI2};
+/// use nucs::translation::{FullLookup, NCBI2};
 ///
-/// const NCBI2_RC: &FastTranslator = &NCBI2.reverse_complement();
+/// const NCBI2_RC: &FullLookup = &NCBI2.reverse_complement();
 /// ```
-pub const NCBI1_RC: &FastTranslator = &NCBI1.reverse_complement();
+pub const NCBI1_RC: &FullLookup = &NCBI1.reverse_complement();
 /// Vertebrate mitochondrial code
-pub const NCBI2: &FastTranslator = &ncbi(1);
+pub const NCBI2: &FullLookup = &ncbi(1);
 /// Yeast mitochondrial code
-pub const NCBI3: &FastTranslator = &ncbi(2);
+pub const NCBI3: &FullLookup = &ncbi(2);
 /// Mold, protozoan, and coelenterate mitochondrial code as well as mycoplasma and spiroplasma code
-pub const NCBI4: &FastTranslator = &ncbi(3);
+pub const NCBI4: &FullLookup = &ncbi(3);
 /// Invertebrate mitochondrial code
-pub const NCBI5: &FastTranslator = &ncbi(4);
+pub const NCBI5: &FullLookup = &ncbi(4);
 /// Ciliate dasycladacean and hexamita nuclear code
-pub const NCBI6: &FastTranslator = &ncbi(5);
+pub const NCBI6: &FullLookup = &ncbi(5);
 /// Echinoderm and flatworm mitochondrial code
-pub const NCBI9: &FastTranslator = &ncbi(6);
+pub const NCBI9: &FullLookup = &ncbi(6);
 /// Euplotid nuclear code
-pub const NCBI10: &FastTranslator = &ncbi(7);
+pub const NCBI10: &FullLookup = &ncbi(7);
 /// Bacterial, archaeal and plant plastid code
-pub const NCBI11: &FastTranslator = &ncbi(8);
+pub const NCBI11: &FullLookup = &ncbi(8);
 /// Alternative yeast nuclear code
-pub const NCBI12: &FastTranslator = &ncbi(9);
+pub const NCBI12: &FullLookup = &ncbi(9);
 /// Ascidian mitochondrial code
-pub const NCBI13: &FastTranslator = &ncbi(10);
+pub const NCBI13: &FullLookup = &ncbi(10);
 /// Alternative flatworm mitochondrial code
-pub const NCBI14: &FastTranslator = &ncbi(11);
+pub const NCBI14: &FullLookup = &ncbi(11);
 /// Blepharisma nuclear code
-pub const NCBI15: &FastTranslator = &ncbi(12);
+pub const NCBI15: &FullLookup = &ncbi(12);
 /// Chlorophycean mitochondrial code
-pub const NCBI16: &FastTranslator = &ncbi(13);
+pub const NCBI16: &FullLookup = &ncbi(13);
 /// Trematode mitochondrial code
-pub const NCBI21: &FastTranslator = &ncbi(14);
+pub const NCBI21: &FullLookup = &ncbi(14);
 /// Scenedesmus obliquus mitochondrial code
-pub const NCBI22: &FastTranslator = &ncbi(15);
+pub const NCBI22: &FullLookup = &ncbi(15);
 /// Thraustochytrium mitochondrial code
-pub const NCBI23: &FastTranslator = &ncbi(16);
+pub const NCBI23: &FullLookup = &ncbi(16);
 /// Pterobranchia mitochondrial code
-pub const NCBI24: &FastTranslator = &ncbi(17);
+pub const NCBI24: &FullLookup = &ncbi(17);
 /// Candidate division SR1 and gracilibacteria code
-pub const NCBI25: &FastTranslator = &ncbi(18);
+pub const NCBI25: &FullLookup = &ncbi(18);
 /// Pachysolen tannophilus nuclear code
-pub const NCBI26: &FastTranslator = &ncbi(19);
+pub const NCBI26: &FullLookup = &ncbi(19);
 /// Karyorelict nuclear code
-pub const NCBI27: &FastTranslator = &ncbi(20);
+pub const NCBI27: &FullLookup = &ncbi(20);
 /// Condylostoma nuclear code
-pub const NCBI28: &FastTranslator = &ncbi(21);
+pub const NCBI28: &FullLookup = &ncbi(21);
 /// Mesodinium nuclear code
-pub const NCBI29: &FastTranslator = &ncbi(22);
+pub const NCBI29: &FullLookup = &ncbi(22);
 /// Peritrich nuclear code
-pub const NCBI30: &FastTranslator = &ncbi(23);
+pub const NCBI30: &FullLookup = &ncbi(23);
 /// Blastocrithidia nuclear code
-pub const NCBI31: &FastTranslator = &ncbi(24);
+pub const NCBI31: &FullLookup = &ncbi(24);
 /// Balanophoraceae plastid code
-pub const NCBI32: &FastTranslator = &ncbi(25);
+pub const NCBI32: &FullLookup = &ncbi(25);
 /// Cephalodiscidae mitochondrial code
-pub const NCBI33: &FastTranslator = &ncbi(26);
+pub const NCBI33: &FullLookup = &ncbi(26);
 /// Enterosoma code
-pub const NCBI34: &FastTranslator = &ncbi(27);
+pub const NCBI34: &FullLookup = &ncbi(27);
 /// Peptacetobacter code
-pub const NCBI35: &FastTranslator = &ncbi(28);
+pub const NCBI35: &FullLookup = &ncbi(28);
 /// Anaerococcus and onthovivens code
-pub const NCBI36: &FastTranslator = &ncbi(29);
+pub const NCBI36: &FullLookup = &ncbi(29);
 /// Absconditabacterales genetic code
-pub const NCBI37: &FastTranslator = &ncbi(30);
+pub const NCBI37: &FullLookup = &ncbi(30);
 
-const fn ncbi(i: usize) -> FastTranslator {
-    FastTranslator::from_table(&NCBI_DATA[i])
+const fn ncbi(i: usize) -> FullLookup {
+    FullLookup::from_table(&NCBI_DATA[i])
 }
 
 macro_rules! aminos {
@@ -670,13 +688,13 @@ mod tests {
     #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
     #[test]
     fn compare_fast_lookup_against_reference_implementation() {
-        // In order to be able to build `FastLookup`s for all NCBI tables at compile-time
+        // In order to be able to build `FullLookup`s for all NCBI tables at compile-time
         // in 1 second, the ambiguous lookup generation code is convoluted. (doing things the
         // obvious way would result in `nucs` taking 30 seconds to compile) To improve confidence,
-        // we check that for all codons and NCBI tables, `FastLookup` gives the same results as
+        // we check that for all codons and NCBI tables, `FullLookup` gives the same results as
         // the simpler implementations provided by `&[Amino; 64]` and `GeneticCode`.
         for raw in &NCBI_DATA {
-            let fast = &FastTranslator::from_table(raw);
+            let fast = &FullLookup::from_table(raw);
             assert_genetic_codes_eq(&fast, &raw);
         }
     }
@@ -684,7 +702,7 @@ mod tests {
     #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
     #[test]
     fn fast_lookup_can_be_built_from_other_genetic_code() {
-        let new = &FastTranslator::from_genetic_code(&NCBI1);
+        let new = &FullLookup::from_genetic_code(&NCBI1);
         assert_genetic_codes_eq(&new, &NCBI1);
     }
 
@@ -692,7 +710,7 @@ mod tests {
     #[test]
     fn fast_lookup_conversion_roundtrips() {
         let table = &NCBI_DATA[0];
-        assert_eq!(&FastTranslator::from_table(table).to_table(), table);
+        assert_eq!(&FullLookup::from_table(table).to_table(), table);
     }
 
     #[test]

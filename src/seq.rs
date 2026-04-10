@@ -179,7 +179,7 @@ impl<T: ?Sized> Seq<T> {
     /// This translates codons starting at the end. If the DNA can be converted to codons without
     /// excess nucleotides, then this produces the exact reverse of the output of
     /// [`translated_to_array_by`](Self::translated_to_array_by). It's intended to be used with
-    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement)
+    /// [`FullLookup::reverse_complement`](crate::translation::FullLookup::reverse_complement)
     /// as that speeds up translation by folding the complementation into the translator.
     ///
     /// <div class="warning">
@@ -252,7 +252,7 @@ impl<T: ?Sized> Seq<T> {
     /// This translates codons starting at the end. If the DNA can be converted to codons without
     /// excess nucleotides, then this produces the exact reverse of the output of
     /// [`translated_to_vec_by`](Self::translated_to_vec_by). It's intended to be used with
-    /// [`FastTranslator::reverse_complement`](crate::translation::FastTranslator::reverse_complement)
+    /// [`FullLookup::reverse_complement`](crate::translation::FullLookup::reverse_complement)
     /// as that speeds up translation by folding the complementation into the translator.
     ///
     /// <div class="warning">
