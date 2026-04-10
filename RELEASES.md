@@ -4,7 +4,7 @@
 
 * Loads of adjustments to translation. There are now methods on `DnaSlice` and `Seq` to perform
   reverse complement translation almost as fast as ordinary translation, and a number of
-  translation-related APIs have changed. (#23, #24, #25, #26, #27, #30, #31, #38)
+  translation-related APIs have changed. (#23, #24, #25, #26, #27, #30, #31, #38, #41)
 * Usability improvements to `Seq`:
   * You can now do e.g. `Nuc::seq(b"ATCG")` as a shorthand for `Seq(Nuc::lit(b"ATCG"))`. (#29)
   * `Seq` can now wrap slices, not just owned data. (#32)

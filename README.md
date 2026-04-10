@@ -55,7 +55,7 @@ for _ in 0..4 {
 let peptide: Peptide = dna
     .iter()
     .revcomped()
-    .translate(NCBI1)
+    .translated_by(NCBI1)
     .collect();
 assert_eq!(peptide, "TRAVERSE*VIEW");
 
