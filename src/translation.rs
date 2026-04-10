@@ -175,31 +175,6 @@ impl FullLookup {
     pub const fn to_table(&self) -> [Amino; 64] {
         self.lookup.to_table()
     }
-
-    /// Return the reverse complement of this translation table.
-    ///
-    /// It produces a copy of the translation table where the reverse complement of each codon
-    /// maps to the same amino acid as before. For example:
-    ///
-    /// ```
-    /// use nucs::{Amino, Nuc, NCBI1};
-    /// use nucs::translation::GeneticCode;
-    /// use Nuc::{A, C, G, T};
-    ///
-    /// assert_eq!(NCBI1.translate([A, T, G]), Amino::M);
-    /// let ncbi1_rc = &NCBI1.reverse_complement();
-    /// // ATG reverse-complemented is CAT, so...
-    /// assert_eq!(ncbi1_rc.translate([C, A, T]), Amino::M);
-    /// ```
-    #[must_use]
-    pub const fn reverse_complement(&self) -> Self {
-        Self {
-            lookup: ConcreteLookup(self.lookup_rc.0),
-            lookup_rc: ConcreteLookup(self.lookup.0),
-            ambi_lookup: AmbiLookup(self.ambi_lookup_rc.0),
-            ambi_lookup_rc: AmbiLookup(self.ambi_lookup.0),
-        }
-    }
 }
 
 impl GeneticCode for &FullLookup {
@@ -494,19 +469,7 @@ fn fmt_genetic_code(
 }
 
 /// Standard code
-///
-/// The reverse complemented version is [`NCBI1_RC`].
 pub const NCBI1: &FullLookup = &ncbi(0);
-/// Standard code (reverse complemented)
-///
-/// This is the reverse complemented version of [`NCBI1`]. If other genetic codes are needed,
-/// they can be defined like so:
-/// ```
-/// use nucs::translation::{FullLookup, NCBI2};
-///
-/// const NCBI2_RC: &FullLookup = &NCBI2.reverse_complement();
-/// ```
-pub const NCBI1_RC: &FullLookup = &NCBI1.reverse_complement();
 /// Vertebrate mitochondrial code
 pub const NCBI2: &FullLookup = &ncbi(1);
 /// Yeast mitochondrial code
