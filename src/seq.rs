@@ -87,7 +87,7 @@ impl<T: ?Sized> Seq<T> {
     /// ```
     /// use nucs::{Nuc, Seq};
     ///
-    /// let dna = Nuc::lit(b"ACTGACTG");
+    /// let dna = Nuc::arr(b"ACTGACTG");
     /// let partial_dna = Seq::wrap(&dna[3..6]);
     /// assert_eq!(partial_dna, "GAC");
     /// ```
@@ -445,7 +445,7 @@ mod tests {
 
     #[test]
     fn sanity_check_that_seq_works_with_vecs() {
-        let dna = Seq(Nuc::lit(b"ACGT").to_vec());
+        let dna = Seq(Nuc::arr(b"ACGT").to_vec());
         assert_eq!(dna, "ACGT");
         let peptide = dna.translated_to_vec_by(NCBI1);
         assert_eq!(peptide, "T");
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn sanity_check_that_seq_works_with_slices() {
-        let dna = Seq::wrap(const { &Nuc::lit(b"ACGT") });
+        let dna = Seq::wrap(const { &Nuc::arr(b"ACGT") });
         assert_eq!(dna, "ACGT");
         let peptide = dna.translated_to_vec_by(NCBI1);
         assert_eq!(peptide, "T");
@@ -462,7 +462,7 @@ mod tests {
     #[test]
     fn sanity_check_that_seq_works_with_vecdeques() {
         type VdSeq<T> = Seq<VecDeque<T>>;
-        let dna = VdSeq::from_iter(Nuc::lit(b"ACGT"));
+        let dna = VdSeq::from_iter(Nuc::arr(b"ACGT"));
         assert_eq!(dna, "ACGT");
         let peptide: VdSeq<_> = dna.translated_by(NCBI1);
         assert_eq!(peptide, "T");

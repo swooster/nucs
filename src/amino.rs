@@ -68,7 +68,7 @@ pub enum Amino {
 
 impl Amino {
     /// All [`Amino`]s sorted in ascending order
-    pub const ALL: [Self; 23] = Self::lit(b"*ACDEFGHIKLMNOPQRSTUVWY");
+    pub const ALL: [Self; 23] = Self::arr(b"*ACDEFGHIKLMNOPQRSTUVWY");
 
     /// Return uppercase string representation
     ///
@@ -180,7 +180,7 @@ impl Amino {
     /// ```
     /// use nucs::Amino;
     ///
-    /// let aas1 = Amino::lit(b"ACME*WIDGETS");
+    /// let aas1 = Amino::arr(b"ACME*WIDGETS");
     /// // ...is shorthand for...
     /// use Amino::{A, C, M, E, Stop, W, I, D, G, T, S};
     /// let aas2 = [A, C, M, E, Stop, W, I, D, G, E, T, S];
@@ -194,7 +194,7 @@ impl Amino {
     /// because the returned array must have the same length.
     #[must_use]
     #[track_caller]
-    pub const fn lit<const N: usize>(literal: &[u8; N]) -> [Amino; N] {
+    pub const fn arr<const N: usize>(literal: &[u8; N]) -> [Amino; N] {
         let mut aas = [Self::A; N];
         let mut i = 0;
         while i < literal.len() {
@@ -229,7 +229,7 @@ impl Amino {
     #[must_use]
     #[track_caller]
     pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Amino; N]> {
-        Seq(Self::lit(literal))
+        Seq(Self::arr(literal))
     }
 }
 
@@ -514,7 +514,7 @@ impl AmbiAmino {
     /// ```
     /// use nucs::AmbiAmino;
     ///
-    /// let aas1 = AmbiAmino::lit(b"TOO*LONG");
+    /// let aas1 = AmbiAmino::arr(b"TOO*LONG");
     /// // ...is shorthand for...
     /// let aas2 = [
     ///     AmbiAmino::T, AmbiAmino::O, AmbiAmino::O, AmbiAmino::STOP,
@@ -530,7 +530,7 @@ impl AmbiAmino {
     /// because the returned array must have the same length.
     #[must_use]
     #[track_caller]
-    pub const fn lit<const N: usize>(literal: &[u8; N]) -> [AmbiAmino; N] {
+    pub const fn arr<const N: usize>(literal: &[u8; N]) -> [AmbiAmino; N] {
         let mut aas = [Self::A; N];
         let mut i = 0;
         while i < literal.len() {
@@ -567,7 +567,7 @@ impl AmbiAmino {
     #[must_use]
     #[track_caller]
     pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[AmbiAmino; N]> {
-        Seq(Self::lit(literal))
+        Seq(Self::arr(literal))
     }
 
     /// Return iterator of [`Amino`]s that this ambiguous amino acid could be.
@@ -581,7 +581,7 @@ impl AmbiAmino {
     /// use nucs::{AmbiAmino, Amino};
     ///
     /// let aa = AmbiAmino::A | AmbiAmino::B | AmbiAmino::C;
-    /// assert!(aa.iter().eq(Amino::lit(b"ACDN")));
+    /// assert!(aa.iter().eq(Amino::arr(b"ACDN")));
     /// ```
     pub fn iter(self) -> AmbiAminoIter {
         AmbiAminoIter::new(self)
@@ -885,8 +885,8 @@ impl Symbol for Amino {
         Self::to_ascii(self)
     }
 
-    fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N] {
-        Self::lit(literal)
+    fn arr<const N: usize>(literal: &[u8; N]) -> [Self; N] {
+        Self::arr(literal)
     }
 
     fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]> {
@@ -910,8 +910,8 @@ impl Symbol for AmbiAmino {
         Self::to_ascii(self)
     }
 
-    fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N] {
-        Self::lit(literal)
+    fn arr<const N: usize>(literal: &[u8; N]) -> [Self; N] {
+        Self::arr(literal)
     }
 
     fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]> {

@@ -27,7 +27,7 @@ pub enum Nuc {
 
 impl Nuc {
     /// All [`Nuc`]s sorted in ascending order
-    pub const ALL: [Self; 4] = Self::lit(b"ACGT");
+    pub const ALL: [Self; 4] = Self::arr(b"ACGT");
 
     /// Swap [`A`](Self::A) and [`T`](Self::T), as well as [`C`](Self::C) and [`G`](Self::G).
     ///
@@ -116,7 +116,7 @@ impl Nuc {
     /// ```
     /// use nucs::Nuc;
     ///
-    /// let dna1 = Nuc::lit(b"TACT");
+    /// let dna1 = Nuc::arr(b"TACT");
     /// // ...is shorthand for...
     /// use Nuc::{T, A, C};
     /// let dna2 = [T, A, C, T];
@@ -130,7 +130,7 @@ impl Nuc {
     /// because the returned array must have the same length.
     #[must_use]
     #[track_caller]
-    pub const fn lit<const N: usize>(literal: &[u8; N]) -> [Nuc; N] {
+    pub const fn arr<const N: usize>(literal: &[u8; N]) -> [Nuc; N] {
         let mut nucs = [Self::A; N];
         let mut i = 0;
         while i < literal.len() {
@@ -165,7 +165,7 @@ impl Nuc {
     #[must_use]
     #[track_caller]
     pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Nuc; N]> {
-        Seq(Self::lit(literal))
+        Seq(Self::arr(literal))
     }
 }
 
@@ -267,7 +267,7 @@ pub enum AmbiNuc {
 
 impl AmbiNuc {
     /// All [`AmbiNuc`]s sorted in ascending order
-    pub const ALL: [Self; 15] = Self::lit(b"ACMGRSVTWYHKDBN");
+    pub const ALL: [Self; 15] = Self::arr(b"ACMGRSVTWYHKDBN");
 
     /// Return ambiguous nucleotide containing complements for each potential value.
     ///
@@ -405,7 +405,7 @@ impl AmbiNuc {
     /// ```
     /// use nucs::{AmbiNuc, Nuc};
     ///
-    /// assert!(AmbiNuc::B.iter().eq(Nuc::lit(b"CGT")));
+    /// assert!(AmbiNuc::B.iter().eq(Nuc::arr(b"CGT")));
     ///
     /// assert_eq!(Vec::from_iter(AmbiNuc::B), AmbiNuc::B.expansions());
     /// ```
@@ -423,7 +423,7 @@ impl AmbiNuc {
     /// ```
     /// use nucs::{AmbiNuc, Nuc};
     ///
-    /// assert_eq!(AmbiNuc::B.expansions(), Nuc::lit(b"CGT"));
+    /// assert_eq!(AmbiNuc::B.expansions(), Nuc::arr(b"CGT"));
     /// assert_eq!(Nuc::C | Nuc::G | Nuc::T, AmbiNuc::B);
     /// ```
     #[must_use]
@@ -457,7 +457,7 @@ impl AmbiNuc {
     /// ```
     /// use nucs::AmbiNuc;
     ///
-    /// let dna1 = AmbiNuc::lit(b"NASTYGRAM");
+    /// let dna1 = AmbiNuc::arr(b"NASTYGRAM");
     /// // ...is shorthand for...
     /// use AmbiNuc::{N, A, S, T, Y, G, R, M};
     /// let dna2 = [N, A, S, T, Y, G, R, A, M];
@@ -471,7 +471,7 @@ impl AmbiNuc {
     /// because the returned array must have the same length.
     #[must_use]
     #[track_caller]
-    pub const fn lit<const N: usize>(literal: &[u8; N]) -> [AmbiNuc; N] {
+    pub const fn arr<const N: usize>(literal: &[u8; N]) -> [AmbiNuc; N] {
         let mut nucs = [Self::A; N];
         let mut i = 0;
         while i < literal.len() {
@@ -506,7 +506,7 @@ impl AmbiNuc {
     #[must_use]
     #[track_caller]
     pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[AmbiNuc; N]> {
-        Seq(Self::lit(literal))
+        Seq(Self::arr(literal))
     }
 
     pub(crate) fn from_u8(byte: u8) -> Option<Self> {
@@ -775,8 +775,8 @@ impl Symbol for Nuc {
         Self::to_ascii(self)
     }
 
-    fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N] {
-        Self::lit(literal)
+    fn arr<const N: usize>(literal: &[u8; N]) -> [Self; N] {
+        Self::arr(literal)
     }
 
     fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]> {
@@ -800,8 +800,8 @@ impl Symbol for AmbiNuc {
         Self::to_ascii(self)
     }
 
-    fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N] {
-        Self::lit(literal)
+    fn arr<const N: usize>(literal: &[u8; N]) -> [Self; N] {
+        Self::arr(literal)
     }
 
     fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Self; N]> {

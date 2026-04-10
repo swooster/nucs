@@ -27,7 +27,7 @@ pub trait DnaSlice {
     ///     [T, A, G],
     ///     [A, C, T],
     /// ];
-    /// assert_eq!(codons.as_flat_dna(), Nuc::lit(b"CATTAGACT"));
+    /// assert_eq!(codons.as_flat_dna(), Nuc::arr(b"CATTAGACT"));
     /// ```
     fn as_flat_dna(&self) -> &[Self::Nuc] {
         self.as_codons().as_flattened()
@@ -70,7 +70,7 @@ pub trait DnaSlice {
     /// use nucs::{DnaSlice, Nuc};
     /// use Nuc::{A, C, T};
     ///
-    /// let dna = Nuc::lit(b"CATATTAC");
+    /// let dna = Nuc::arr(b"CATATTAC");
     /// assert_eq!(
     ///     dna.as_codons(),
     ///     [[C, A, T], [A, T, T]]
@@ -89,11 +89,11 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, Nuc};
     ///
-    /// let mut dna = Nuc::lit(b"CATATTAC");
+    /// let mut dna = Nuc::arr(b"CATATTAC");
     /// let codons = dna.as_codons_mut();
     /// // Set the second codon's first nucleotide...
     /// codons[1][0] = Nuc::G;
-    /// assert_eq!(dna, Nuc::lit(b"CATGTTAC"));
+    /// assert_eq!(dna, Nuc::arr(b"CATGTTAC"));
     /// ```
     fn as_codons_mut(&mut self) -> &mut [[Self::Nuc; 3]] {
         self.as_flat_dna_mut().as_chunks_mut().0
@@ -109,7 +109,7 @@ pub trait DnaSlice {
     /// use nucs::{DnaSlice, Nuc};
     /// use Nuc::{A, C, T};
     ///
-    /// let dna = Nuc::lit(b"CATATTAC");
+    /// let dna = Nuc::arr(b"CATATTAC");
     /// assert_eq!(
     ///     dna.as_rcodons(),
     ///     [[T, A, T], [T, A, C]]
@@ -128,11 +128,11 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, Nuc};
     ///
-    /// let mut dna = Nuc::lit(b"CATATTAC");
+    /// let mut dna = Nuc::arr(b"CATATTAC");
     /// let codons = dna.as_rcodons_mut();
     /// // Set the second codon's first nucleotide...
     /// codons[1][0] = Nuc::G;
-    /// assert_eq!(dna, Nuc::lit(b"CATATGAC"));
+    /// assert_eq!(dna, Nuc::arr(b"CATATGAC"));
     /// ```
     fn as_rcodons_mut(&mut self) -> &mut [[Self::Nuc; 3]] {
         self.as_flat_dna_mut().as_rchunks_mut().1
@@ -185,7 +185,7 @@ pub trait DnaSlice {
     /// use nucs::{DnaSlice, Nuc};
     /// use Nuc::{A, C, T};
     ///
-    /// let dna = Nuc::lit(b"ACATATTAC");
+    /// let dna = Nuc::arr(b"ACATATTAC");
     /// assert_eq!(
     ///     dna.reading_frames(),
     ///     [
@@ -209,7 +209,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let peptide: Seq<Vec<_>> = Nuc::lit(b"TATGCGAGAAAC")
+    /// let peptide: Seq<Vec<_>> = Nuc::arr(b"TATGCGAGAAAC")
     ///     .translated_by(NCBI1)
     ///     .collect();
     /// assert_eq!(peptide, "YARN");
@@ -230,7 +230,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let dna = Nuc::lit(b"TATGCGAGAAACA");
+    /// let dna = Nuc::arr(b"TATGCGAGAAACA");
     /// let peptide = dna.translated_to_vec_by(NCBI1);
     /// assert_eq!(Seq(peptide), "YARN");
     /// ```
@@ -251,7 +251,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
     ///
-    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
     /// let peptide = dna.rc_translated_to_vec_by(NCBI1);
     /// assert_eq!(Seq(peptide), "FAST*RC");
     /// ```
@@ -276,7 +276,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let dna = Nuc::lit(b"TATGCGAGAAACA");
+    /// let dna = Nuc::arr(b"TATGCGAGAAACA");
     /// let peptide: [_; 4] = dna.translated_to_array_by(NCBI1);
     /// assert_eq!(Seq(peptide), "YARN");
     /// ```
@@ -300,7 +300,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
     ///
-    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
     /// let peptide: [_; 7] = dna.rc_translated_to_array_by(NCBI1);
     /// assert_eq!(Seq(peptide), "FAST*RC");
     /// ```
@@ -326,7 +326,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
     ///
-    /// let dna = Nuc::lit(b"TATGCGAGAAACA");
+    /// let dna = Nuc::arr(b"TATGCGAGAAACA");
     /// let mut peptide: [_; 4] = Default::default();
     /// dna.translated_to_buf_by(NCBI1, &mut peptide);
     /// assert_eq!(Seq(peptide), "YARN");
@@ -364,7 +364,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
     ///
-    /// let dna = AmbiNuc::lit(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
     /// let mut peptide: [_; 7] = Default::default();
     /// dna.rc_translated_to_buf_by(NCBI1, &mut peptide);
     /// assert_eq!(Seq(peptide), "FAST*RC");
@@ -398,7 +398,7 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, Nuc};
     ///
-    /// let dna = Nuc::lit(b"CATATTAC");
+    /// let dna = Nuc::arr(b"CATATTAC");
     /// assert_eq!(dna.display().to_string(), "CATATTAC");
     /// assert_eq!(format!("{:#4}", dna.display()), "CATA\nTTAC");
     /// ```
@@ -419,8 +419,8 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{AmbiNuc, DnaSlice, Nuc};
     ///
-    /// let dna = Nuc::lit(b"CATATTAC");
-    /// assert_eq!(dna.as_ambi_nucs(), AmbiNuc::lit(b"CATATTAC"));
+    /// let dna = Nuc::arr(b"CATATTAC");
+    /// assert_eq!(dna.as_ambi_nucs(), AmbiNuc::arr(b"CATATTAC"));
     /// ```
     #[cfg(feature = "unsafe")]
     #[cfg_attr(docsrs, doc(cfg(feature = "unsafe")))]
@@ -443,10 +443,10 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{AmbiNuc, DnaSlice, Nuc};
     ///
-    /// let dna = AmbiNuc::lit(b"CATATTAC");
-    /// assert_eq!(dna.to_nucs().unwrap(), Nuc::lit(b"CATATTAC"));
+    /// let dna = AmbiNuc::arr(b"CATATTAC");
+    /// assert_eq!(dna.to_nucs().unwrap(), Nuc::arr(b"CATATTAC"));
     ///
-    /// let dna = AmbiNuc::lit(b"CATTY");
+    /// let dna = AmbiNuc::arr(b"CATTY");
     /// assert!(dna.to_nucs().is_none());
     /// ```
     #[cfg(feature = "unsafe")]
@@ -470,13 +470,13 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{AmbiNuc, DnaSlice, Nuc};
     ///
-    /// let mut dna = AmbiNuc::lit(b"CATATTAC");
+    /// let mut dna = AmbiNuc::arr(b"CATATTAC");
     /// if let Some(nucs) = dna.to_nucs_mut() {
     ///     nucs[7] = Nuc::G;
     /// }
-    /// assert_eq!(dna, AmbiNuc::lit(b"CATATTAG"));
+    /// assert_eq!(dna, AmbiNuc::arr(b"CATATTAG"));
     ///
-    /// let mut dna = AmbiNuc::lit(b"CATTY");
+    /// let mut dna = AmbiNuc::arr(b"CATTY");
     /// assert!(dna.to_nucs_mut().is_none());
     /// ```
     #[cfg(feature = "unsafe")]
@@ -492,9 +492,9 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, Nuc};
     ///
-    /// let mut dna = Nuc::lit(b"CATATTAC");
+    /// let mut dna = Nuc::arr(b"CATATTAC");
     /// dna.complement();
-    /// assert_eq!(dna, Nuc::lit(b"GTATAATG"));
+    /// assert_eq!(dna, Nuc::arr(b"GTATAATG"));
     /// ```
     fn complement(&mut self) {
         self.as_flat_dna_mut().iter_mut().complement();
@@ -507,9 +507,9 @@ pub trait DnaSlice {
     /// ```
     /// use nucs::{DnaSlice, Nuc};
     ///
-    /// let mut dna = Nuc::lit(b"CATATTAC");
+    /// let mut dna = Nuc::arr(b"CATATTAC");
     /// dna.revcomp();
-    /// assert_eq!(dna, Nuc::lit(b"GTAATATG"));
+    /// assert_eq!(dna, Nuc::arr(b"GTAATATG"));
     /// ```
     fn revcomp(&mut self) {
         self.as_flat_dna_mut().iter_mut().revcomp();
@@ -560,7 +560,7 @@ mod tests {
 
     #[test]
     fn translated_type_inference() {
-        let mut dna = Nuc::lit(b"AAAACCCGGT");
+        let mut dna = Nuc::arr(b"AAAACCCGGT");
         let peptide: Seq<Vec<_>> = anon_slice(&dna).translated_by(NCBI1).collect();
         assert_eq!(peptide, "KTR");
         let peptide: Seq<Vec<_>> = anon_mut_slice(&mut dna).translated_by(NCBI1).collect();
@@ -569,7 +569,7 @@ mod tests {
 
     #[test]
     fn display_type_inference() {
-        let mut dna = Nuc::lit(b"AAAACCCGGT");
+        let mut dna = Nuc::arr(b"AAAACCCGGT");
         assert_eq!(anon_slice(&dna).display().to_string(), "AAAACCCGGT");
         assert_eq!(anon_mut_slice(&mut dna).display().to_string(), "AAAACCCGGT");
     }

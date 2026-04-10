@@ -34,9 +34,9 @@ pub trait GeneticCode {
     ///    [A, T, G] => Amino::W,
     ///    _ => Amino::Stop,
     /// };
-    /// assert_eq!(genetic_code.translate_rc(Nuc::lit(b"CAT")), Amino::W);
-    /// assert_eq!(genetic_code.translate_rc(AmbiNuc::lit(b"CAT")), AmbiAmino::W);
-    /// assert_eq!(genetic_code.translate_rc(AmbiNuc::lit(b"ANT")), AmbiAmino::Stop);
+    /// assert_eq!(genetic_code.translate_rc(Nuc::arr(b"CAT")), Amino::W);
+    /// assert_eq!(genetic_code.translate_rc(AmbiNuc::arr(b"CAT")), AmbiAmino::W);
+    /// assert_eq!(genetic_code.translate_rc(AmbiNuc::arr(b"ANT")), AmbiAmino::Stop);
     /// ```
     fn translate_rc<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
         N::translate_rc(self, codon)
@@ -242,7 +242,7 @@ impl ConcreteLookup {
     /// use nucs::{Amino, NCBI1};
     /// use nucs::translation::ConcreteLookup;
     ///
-    /// let table = Amino::lit(b"ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRS*");
+    /// let table = Amino::arr(b"ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRS*");
     /// let lookup = ConcreteLookup::from_table(&table);
     /// assert_eq!(lookup.to_table(), table);
     /// ```
@@ -275,7 +275,7 @@ impl ConcreteLookup {
     /// use nucs::translation::{ConcreteLookup, GeneticCode};
     /// use Nuc::{A, C, G, T};
     ///
-    /// let table = Amino::lit(b"ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRS*");
+    /// let table = Amino::arr(b"ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRS*");
     /// let lookup = ConcreteLookup::from_table(&table);
     /// assert_eq!((&lookup).translate([A, T, G]), Amino::Q);
     /// let lookup_rc = lookup.reverse_complement();
@@ -407,7 +407,7 @@ impl AmbiLookup {
     /// use nucs::translation::{ConcreteLookup, GeneticCode};
     /// use Nuc::{A, C, G, T};
     ///
-    /// let table = Amino::lit(b"ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRS*");
+    /// let table = Amino::arr(b"ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRS*");
     /// let lookup = ConcreteLookup::from_table(&table).to_ambi_lookup();
     /// assert_eq!((&lookup).translate([A, T, G]), Amino::Q);
     /// let lookup_rc = lookup.reverse_complement();
@@ -681,9 +681,9 @@ mod tests {
 
     #[test]
     fn fast_lookup_reverse_complement() {
-        let dna = Nuc::lit(b"ATCTTCGGGGGGAATTAAAAACTAATAAAGTTCAACAATGGTTGGCATCTCTTCCCGGGG");
+        let dna = Nuc::arr(b"ATCTTCGGGGGGAATTAAAAACTAATAAAGTTCAACAATGGTTGGCATCTCTTCCCGGGG");
         let peptide = dna.rc_translated_to_vec_by(NCBI1);
-        assert_eq!(peptide, Amino::lit(b"PREEMPTIVELY*FLIPPED"));
+        assert_eq!(peptide, Amino::arr(b"PREEMPTIVELY*FLIPPED"));
     }
 
     #[test]

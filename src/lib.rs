@@ -20,7 +20,7 @@
 //! assert_eq!(dna, "CATGAG");
 //!
 //! // For convenience, there's a helper to build const literals:
-//! const CAT: &[Nuc] = &Nuc::lit(b"CAT");
+//! const CAT: &[Nuc] = &Nuc::arr(b"CAT");
 //! assert!(dna.starts_with(CAT));
 //!
 //! // `Seq` is a wrapper to add convenience features to `Vec`-like collections
@@ -71,7 +71,7 @@
 //! // `Nuc`s can be composed into `AmbiNuc`s...
 //! assert_eq!(C | A | T, AmbiNuc::H);
 //! // ...which can be decomposed back into `Nuc`s
-//! let dna = AmbiNuc::lit(b"STRAYGYMNAST");
+//! let dna = AmbiNuc::arr(b"STRAYGYMNAST");
 //! assert!(dna[0].iter().eq([C, G]));
 //! assert!(dna[1].iter().eq([T]));
 //! assert!(dna[8].iter().eq(Nuc::ALL));
@@ -79,18 +79,18 @@
 //! // Both concrete and ambiguous amino acids are supported as well:
 //! use nucs::{Amino, AmbiAmino};
 //!
-//! // `Seq(T::lit(...))` is common so there's a shorthand for it:
+//! // `Seq(T::arr(...))` is common so there's a shorthand for it:
 //! let peptide = Amino::seq(b"KITTY*PAWS");
 //! assert_eq!(format!("{peptide:#5}"), "KITTY\n*PAWS");
 //!
 //! assert_eq!(Amino::I | Amino::L, AmbiAmino::J);
-//! assert!((Amino::C | Amino::A | Amino::T).iter().eq(Amino::lit(b"ACT")));
+//! assert!((Amino::C | Amino::A | Amino::T).iter().eq(Amino::arr(b"ACT")));
 //!
 //! // And it's easy to translate DNA into peptides:
 //! use nucs::NCBI1; // see `nucs::translation` for other genetic codes
 //!
 //! // Iterators support translation:
-//! let mut infinite_peptide = Nuc::lit(b"CAT")
+//! let mut infinite_peptide = Nuc::arr(b"CAT")
 //!     .into_iter()
 //!     .cycle()
 //!     .translated_by(NCBI1);
