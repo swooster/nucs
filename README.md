@@ -17,7 +17,7 @@ Its design is based off of my experience using and helping maintain
 * ...tries to be consistent with Zipf's law of abbreviation when naming things.
 
 ```rust
-use nucs::{Dna, DnaSlice, NCBI1, Nuc, Peptide};
+use nucs::{Dna, DnaSlice, NCBI1, Nuc};
 
 let mut dna: Dna = "ACACACATATCTTACGCTTAGGAAATCTGACCCGAA"
     .parse().unwrap();
@@ -33,8 +33,8 @@ codons[3..8].revcomp();
 
 dna.extend(const { Nuc::lit(b"CCAACCATTGATGAG") });
 
-let peptide: Peptide = dna.translate(NCBI1).collect();
-assert_eq!(peptide.to_string(), "THIS*IS*A*PEPTIDE");
+let peptide = dna.translated_to_vec_by(NCBI1);
+assert_eq!(peptide, "THIS*IS*A*PEPTIDE");
 ```
 
 Non-`Vec` containers are supported too, and it's possible to work with DNA non-destructively
@@ -51,34 +51,39 @@ for _ in 0..4 {
     dna.push_front(Nuc::C);
 }
 
-let immutable_dna = dna;
 // Apply reverse compliment and NCBI1 non-destructively.
-let peptide: Peptide = immutable_dna
+let peptide: Peptide = dna
     .iter()
     .revcomped()
     .translate(NCBI1)
     .collect();
-assert_eq!(peptide.to_string(), "TRAVERSE*VIEW");
+assert_eq!(peptide, "TRAVERSE*VIEW");
+
+// Alternatively, when sequences are continuguous, reverse complement
+// translation can be performed nearly as fast as forward translation:
+let dna = Seq::wrap(dna.make_contiguous());
+let peptide = dna.rc_translated_to_vec_by(NCBI1);
+assert_eq!(peptide, "TRAVERSE*VIEW");
 ```
 
 Ambiguous nucleotides and amino acids are supported:
 ```rust
-use nucs::{AmbiAmino, AmbiNuc, AmbiPeptide, DnaSlice, NCBI1};
+use nucs::{AmbiAmino, AmbiNuc, NCBI1};
 use AmbiNuc::{A, C};
 
-let mut dna = AmbiNuc::lit(b"TTAGCGGACGATTAT");
+let mut dna = AmbiNuc::seq(b"TTAGCGGACGATTAT");
 
 // Because `dna` contains ambiguous nucleotides,
 // translating it produces an ambiguous peptide
-let peptide: AmbiPeptide = dna.translate(NCBI1).collect();
-assert_eq!(peptide.to_string(), "LADDY");
+let peptide = dna.translated_to_vec_by(NCBI1);
+assert_eq!(peptide, "LADDY");
 
 dna[0] |= A | C;
 dna[6] |= A;
 dna[9] |= A;
-assert_eq!(dna.display().to_string(), "HTAGCGRACRATTAT");
-let peptide: AmbiPeptide = dna.translate(NCBI1).collect();
-assert_eq!(peptide.to_string(), "JABBY");
+assert_eq!(dna, "HTAGCGRACRATTAT");
+let peptide = dna.translated_to_vec_by(NCBI1);
+assert_eq!(peptide, "JABBY");
 ```
 
 ## Planned functionality

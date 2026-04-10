@@ -35,17 +35,21 @@
 //! // Displayed `Seq`s can be line-wrapped by using alternate formatting:
 //! assert_eq!(format!("{dna:#4}"), "ACAT\nTAG");
 //!
+//! // `Seq` also supports slices:
+//! let slice = Seq::wrap_mut(dna.make_contiguous());
+//! assert_eq!(slice, "ACATTAG");
+//!
 //! // `DnaSlice` supplies helpers for working with slices:
+//! // (whether or not they're wrapped in `Seq`)
 //! use nucs::DnaSlice;
 //! use Nuc::{A, C, G, T};
-//! let slice = dna.make_contiguous();
 //! assert_eq!(
 //!     slice.reading_frames(),
 //!     [
 //!         &[[A, C, A], [T, T, A]],
 //!         &[[C, A, T], [T, A ,G]],
 //!         &[[A, T, T]],
-//!     ] as [&[_]; 3]
+//!     ] as [&[_]; _]
 //! );
 //! slice.revcomp(); // in-place reverse-complement
 //! assert_eq!(dna, "CTAATGT");
@@ -75,22 +79,33 @@
 //! // Both concrete and ambiguous amino acids are supported as well:
 //! use nucs::{Amino, AmbiAmino};
 //!
-//! let peptide = Seq(Amino::lit(b"KITTY*PAWS"));
+//! // `Seq(T::lit(...))` is common so there's a shorthand for it:
+//! let peptide = Amino::seq(b"KITTY*PAWS");
 //! assert_eq!(format!("{peptide:#5}"), "KITTY\n*PAWS");
 //!
 //! assert_eq!(Amino::I | Amino::L, AmbiAmino::J);
 //! assert!((Amino::C | Amino::A | Amino::T).iter().eq(Amino::lit(b"ACT")));
 //!
 //! // And it's easy to translate DNA into peptides:
-//! use nucs::NCBI1;
+//! use nucs::NCBI1; // see `nucs::translation` for other genetic codes
 //!
-//! let dna = Nuc::lit(b"TTTGAGCTCATAAACGAGA");
-//! let peptide: Seq<Vec<_>> = dna.translate(NCBI1).collect();
+//! // Iterators support translation:
+//! let mut infinite_peptide = Nuc::lit(b"CAT")
+//!     .into_iter()
+//!     .cycle()
+//!     .translate(NCBI1);
+//! assert_eq!(infinite_peptide.next(), Some(Amino::H));
+//!
+//! // Slices support much faster translation, and it's possible to
+//! // perform translations with allocations:
+//! let dna = Nuc::seq(b"TTTGAGCTCATAAACGAGA");
+//! let peptide: Seq<[_; 6]> = dna.translated_to_array_by(NCBI1);
 //! assert_eq!(peptide, "FELINE");
 //!
-//! // Even ambiguous DNA can be translated:
-//! let dna = AmbiNuc::lit(b"MTTGCGTCTCCCGAGCGC");
-//! let peptide: Seq<Vec<_>> = dna.translate(NCBI1).collect();
+//! // Even ambiguous DNA can be translated, and reverse-complement
+//! // translation can be performed at very little extra cost:
+//! let dna = AmbiNuc::seq(b"GCGCTCGGGAGACGCAAK");
+//! let peptide = dna.rc_translated_to_vec_by(NCBI1);
 //! assert_eq!(peptide, "JASPER");
 //! # Ok(())
 //! # }
