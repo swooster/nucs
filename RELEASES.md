@@ -10,6 +10,7 @@
   * `Seq` can now wrap slices, not just owned data. (#32)
   * `Seq` can be compared to strings for easier testing. (#28)
   * `Seq` now has translation methods. (#30)
+* Rename `T::lit` to `T::arr` to improve clarity. (#42)
 
 ## Version 0.2.0 (2025-11-24)
 

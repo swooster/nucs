@@ -55,7 +55,7 @@ pub trait Symbol:
     /// This is just intended to be a convenience method for testing.
     #[must_use]
     #[track_caller]
-    fn lit<const N: usize>(literal: &[u8; N]) -> [Self; N];
+    fn arr<const N: usize>(literal: &[u8; N]) -> [Self; N];
 
     /// Construct [`Seq`]-wrapped array from literal without allocating.
     ///

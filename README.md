@@ -31,7 +31,7 @@ codons[3..8].revcomp();
 //       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG    AA
 // Changing it to:           AGA TTT CCT AAG CGT
 
-dna.extend(const { Nuc::lit(b"CCAACCATTGATGAG") });
+dna.extend(const { Nuc::arr(b"CCAACCATTGATGAG") });
 
 let peptide = dna.translated_to_vec_by(NCBI1);
 assert_eq!(peptide, "THIS*IS*A*PEPTIDE");

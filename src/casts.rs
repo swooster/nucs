@@ -38,8 +38,8 @@ fn is_representable_as_nucs(nucs: &[AmbiNuc]) -> bool {
 /// ```
 /// use nucs::{AmbiNuc, Nuc};
 ///
-/// let dna = Nuc::lit(b"CATATTAC");
-/// assert_eq!(nucs::casts::nucs_as_ambi(&dna), AmbiNuc::lit(b"CATATTAC"));
+/// let dna = Nuc::arr(b"CATATTAC");
+/// assert_eq!(nucs::casts::nucs_as_ambi(&dna), AmbiNuc::arr(b"CATATTAC"));
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "unsafe")))]
 #[must_use]
@@ -66,10 +66,10 @@ pub fn nucs_as_ambi(nucs: &[Nuc]) -> &[AmbiNuc] {
 /// ```
 /// use nucs::{AmbiNuc, Nuc};
 ///
-/// let dna = AmbiNuc::lit(b"CATATTAC");
-/// assert_eq!(nucs::casts::ambi_to_nucs(&dna).unwrap(), Nuc::lit(b"CATATTAC"));
+/// let dna = AmbiNuc::arr(b"CATATTAC");
+/// assert_eq!(nucs::casts::ambi_to_nucs(&dna).unwrap(), Nuc::arr(b"CATATTAC"));
 ///
-/// let dna = AmbiNuc::lit(b"CATTY");
+/// let dna = AmbiNuc::arr(b"CATTY");
 /// assert!(nucs::casts::ambi_to_nucs(&dna).is_none());
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "unsafe")))]
@@ -103,13 +103,13 @@ pub fn ambi_to_nucs(nucs: &[AmbiNuc]) -> Option<&[Nuc]> {
 /// ```
 /// use nucs::{AmbiNuc, DnaSlice, Nuc};
 ///
-/// let mut dna = AmbiNuc::lit(b"CATATTAC");
+/// let mut dna = AmbiNuc::arr(b"CATATTAC");
 /// if let Some(nucs) = nucs::casts::ambi_to_nucs_mut(&mut dna) {
 ///     nucs[7] = Nuc::G;
 /// }
-/// assert_eq!(dna, AmbiNuc::lit(b"CATATTAG"));
+/// assert_eq!(dna, AmbiNuc::arr(b"CATATTAG"));
 ///
-/// let mut dna = AmbiNuc::lit(b"CATTY");
+/// let mut dna = AmbiNuc::arr(b"CATTY");
 /// assert!(nucs::casts::ambi_to_nucs_mut(&mut dna).is_none());
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "unsafe")))]
@@ -153,8 +153,8 @@ mod tests {
         assert_eq!(nucs_as_ambi(&[] as &[Nuc]), &[] as &[AmbiNuc]);
 
         assert_eq!(
-            nucs_as_ambi(&Nuc::lit(b"GATTACA")),
-            AmbiNuc::lit(b"GATTACA")
+            nucs_as_ambi(&Nuc::arr(b"GATTACA")),
+            AmbiNuc::arr(b"GATTACA")
         );
     }
 
@@ -163,11 +163,11 @@ mod tests {
         assert_eq!(ambi_to_nucs(&[] as &[AmbiNuc]).unwrap(), &[] as &[Nuc]);
 
         assert_eq!(
-            ambi_to_nucs(&AmbiNuc::lit(b"CATTAG")).unwrap(),
-            Nuc::lit(b"CATTAG")
+            ambi_to_nucs(&AmbiNuc::arr(b"CATTAG")).unwrap(),
+            Nuc::arr(b"CATTAG")
         );
 
-        assert_eq!(ambi_to_nucs(&AmbiNuc::lit(b"CATSTAG")), None);
+        assert_eq!(ambi_to_nucs(&AmbiNuc::arr(b"CATSTAG")), None);
     }
 
     #[test]
@@ -177,15 +177,15 @@ mod tests {
             &[] as &[Nuc]
         );
 
-        let mut buffer = AmbiNuc::lit(b"CATTAG");
+        let mut buffer = AmbiNuc::arr(b"CATTAG");
         let nuc_buf = ambi_to_nucs_mut(&mut buffer).unwrap();
         nuc_buf[0] = Nuc::A;
         nuc_buf[1] = Nuc::C;
         nuc_buf[5] = Nuc::T;
-        assert_eq!(nuc_buf, Nuc::lit(b"ACTTAT"));
-        assert_eq!(buffer, AmbiNuc::lit(b"ACTTAT"));
+        assert_eq!(nuc_buf, Nuc::arr(b"ACTTAT"));
+        assert_eq!(buffer, AmbiNuc::arr(b"ACTTAT"));
 
-        assert_eq!(ambi_to_nucs_mut(&mut AmbiNuc::lit(b"CATSTAG")), None);
+        assert_eq!(ambi_to_nucs_mut(&mut AmbiNuc::arr(b"CATSTAG")), None);
     }
 
     // Like any_ambi_dna(...) except convertible to `&[Nuc]` more than half the time.

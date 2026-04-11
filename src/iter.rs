@@ -15,8 +15,8 @@ pub trait DnaIter: Iterator {
     /// ```
     /// use nucs::{DnaIter, Nuc};
     ///
-    /// let complement = Nuc::lit(b"GATTACA").into_iter().revcomped();
-    /// assert!(complement.eq(Nuc::lit(b"TGTAATC")));
+    /// let complement = Nuc::arr(b"GATTACA").into_iter().revcomped();
+    /// assert!(complement.eq(Nuc::arr(b"TGTAATC")));
     /// ```
     fn revcomped<N>(self) -> Complemented<N, std::iter::Rev<Self>>
     where
@@ -35,8 +35,8 @@ pub trait DnaIter: Iterator {
     /// ```
     /// use nucs::{DnaIter, Nuc};
     ///
-    /// let complement = Nuc::lit(b"GATTACA").into_iter().complemented();
-    /// assert!(complement.eq(Nuc::lit(b"CTAATGT")));
+    /// let complement = Nuc::arr(b"GATTACA").into_iter().complemented();
+    /// assert!(complement.eq(Nuc::arr(b"CTAATGT")));
     /// ```
     fn complemented<N>(self) -> Complemented<N, Self>
     where
@@ -59,9 +59,9 @@ pub trait DnaIter: Iterator {
     /// ```
     /// use nucs::{DnaIter, Nuc};
     ///
-    /// let mut dna = Nuc::lit(b"GATTACA");
+    /// let mut dna = Nuc::arr(b"GATTACA");
     /// dna.iter_mut().revcomp();
-    /// assert_eq!(dna, Nuc::lit(b"TGTAATC"));
+    /// assert_eq!(dna, Nuc::arr(b"TGTAATC"));
     /// ```
     fn revcomp<N>(mut self)
     where
@@ -86,9 +86,9 @@ pub trait DnaIter: Iterator {
     /// ```
     /// use nucs::{DnaIter, Nuc};
     ///
-    /// let mut dna = Nuc::lit(b"GATTACA");
+    /// let mut dna = Nuc::arr(b"GATTACA");
     /// dna.iter_mut().complement();
-    /// assert_eq!(dna, Nuc::lit(b"CTAATGT"));
+    /// assert_eq!(dna, Nuc::arr(b"CTAATGT"));
     /// ```
     fn complement<'a, N>(self)
     where
@@ -110,7 +110,7 @@ pub trait DnaIter: Iterator {
     /// use nucs::{DnaIter, Nuc};
     /// use Nuc::{A, C, G, T};
     ///
-    /// let codons = Nuc::lit(b"GATTACA").into_iter().codons();
+    /// let codons = Nuc::arr(b"GATTACA").into_iter().codons();
     /// assert!(codons.eq([
     ///     [G, A, T],
     ///     [T, A, C],
@@ -135,7 +135,7 @@ pub trait DnaIter: Iterator {
     /// use nucs::{DnaIter, Nuc};
     /// use Nuc::{A, C, G, T};
     ///
-    /// let codons = Nuc::lit(b"GATTACA").into_iter().trimmed_to_codon();
+    /// let codons = Nuc::arr(b"GATTACA").into_iter().trimmed_to_codon();
     /// assert!(codons.eq([
     ///     G, A, T,
     ///     T, A, C,
@@ -163,7 +163,7 @@ pub trait DnaIter: Iterator {
     /// ```
     /// use nucs::{DnaIter, NCBI1, Nuc, Seq};
     ///
-    /// let peptide: Seq<Vec<_>> = Nuc::lit(b"TATGCGAGAAAC")
+    /// let peptide: Seq<Vec<_>> = Nuc::arr(b"TATGCGAGAAAC")
     ///     .into_iter()
     ///     .translated_by(NCBI1)
     ///     .collect();
@@ -188,7 +188,7 @@ pub trait DnaIter: Iterator {
     /// ```
     /// use nucs::{DnaIter, Nuc};
     ///
-    /// let dna = Nuc::lit(b"GATTACA").into_iter().display();
+    /// let dna = Nuc::arr(b"GATTACA").into_iter().display();
     /// assert_eq!(format!("{dna:#4}"), "GATT\nACA");
     /// ```
     fn display<N>(&self) -> Display<Self>
@@ -364,7 +364,7 @@ where
 /// ```
 /// use nucs::{Amino, DnaIter, Nuc};
 ///
-/// let dna = Nuc::lit(b"GATTACA").into_iter().display();
+/// let dna = Nuc::arr(b"GATTACA").into_iter().display();
 ///
 /// // The default formatting just prints everything on a single line:
 /// assert_eq!(dna.to_string(), "GATTACA");
@@ -378,7 +378,7 @@ where
 /// assert_eq!(format!("{dna:#4?}"), "GATT\nACA");
 ///
 /// // `Amino`s are supported too, though there's not currently a helper trait for that.
-/// let peptide = Amino::lit(b"PEPTIDE");
+/// let peptide = Amino::arr(b"PEPTIDE");
 /// let peptide = nucs::iter::Display::new(peptide);
 /// assert_eq!(format!("{peptide:#4}"), "PEPT\nIDE");
 /// ```
@@ -529,7 +529,7 @@ mod tests {
 
     #[test]
     fn complemented_type_inference() {
-        let mut dna = Nuc::lit(b"AAAACCCGGT");
+        let mut dna = Nuc::arr(b"AAAACCCGGT");
         let vals: Seq<Vec<_>> = anon_vals(dna).into_iter().complemented().collect();
         assert_eq!(vals, "TTTTGGGCCA");
         let refs: Seq<Vec<_>> = anon_refs(&dna).into_iter().complemented().collect();
@@ -540,9 +540,9 @@ mod tests {
 
     #[test]
     fn complement_type_inference() {
-        let mut dna = Nuc::lit(b"AAAACCCGGT");
+        let mut dna = Nuc::arr(b"AAAACCCGGT");
         anon_muts(&mut dna).into_iter().complement();
-        assert_eq!(dna, Nuc::lit(b"TTTTGGGCCA"));
+        assert_eq!(dna, Nuc::arr(b"TTTTGGGCCA"));
     }
 
     #[test]
@@ -554,14 +554,14 @@ mod tests {
             iter
         }
 
-        let mut dna = Nuc::lit(b"AAAACCCGGT");
+        let mut dna = Nuc::arr(b"AAAACCCGGT");
         anon_muts(&mut dna).into_iter().revcomp();
-        assert_eq!(dna, Nuc::lit(b"ACCGGGTTTT"));
+        assert_eq!(dna, Nuc::arr(b"ACCGGGTTTT"));
     }
 
     #[test]
     fn codons_type_inference() {
-        let mut dna = Nuc::lit(b"AAAACCCGGT");
+        let mut dna = Nuc::arr(b"AAAACCCGGT");
         let vals: Vec<_> = anon_vals(dna).into_iter().codons().map(Seq).collect();
         assert_eq!(vals, ["AAA", "ACC", "CGG"]);
         let refs: Vec<_> = anon_refs(&dna).into_iter().codons().map(Seq).collect();
@@ -603,7 +603,7 @@ mod tests {
             iter
         }
 
-        let mut dna = Nuc::lit(b"AAAACCCGGT");
+        let mut dna = Nuc::arr(b"AAAACCCGGT");
         let vals: Seq<Vec<_>> = anon_vals(dna).into_iter().trimmed_to_codon().collect();
         assert_eq!(vals.to_string(), "AAAACCCGG");
         let refs: Seq<Vec<_>> = anon_refs(&dna).into_iter().trimmed_to_codon().collect();
@@ -614,7 +614,7 @@ mod tests {
 
     #[test]
     fn translate_type_inference() {
-        let mut dna = Nuc::lit(b"AAAACCCGGT");
+        let mut dna = Nuc::arr(b"AAAACCCGGT");
         let vals: Seq<Vec<_>> = anon_vals(dna).into_iter().translated_by(NCBI1).collect();
         assert_eq!(vals, "KTR");
         let refs: Seq<Vec<_>> = anon_refs(&dna).into_iter().translated_by(NCBI1).collect();
@@ -640,7 +640,7 @@ mod tests {
             iter
         }
 
-        let dna = Nuc::lit(b"AAAACCCGGT");
+        let dna = Nuc::arr(b"AAAACCCGGT");
         let vals = anon_vals(dna).into_iter().display();
         assert_eq!(vals.to_string(), "AAAACCCGGT");
         let refs = anon_refs(&dna).into_iter().display();
@@ -649,24 +649,24 @@ mod tests {
 
     #[test]
     fn revcomp() {
-        let mut dna = Nuc::lit(b"");
+        let mut dna = Nuc::arr(b"");
         dna.iter_mut().revcomp(); // just sanity check a lack of panics
 
-        let mut dna = Nuc::lit(b"A");
+        let mut dna = Nuc::arr(b"A");
         dna.iter_mut().revcomp();
-        assert_eq!(dna, Nuc::lit(b"T"));
+        assert_eq!(dna, Nuc::arr(b"T"));
 
-        let mut dna = Nuc::lit(b"AC");
+        let mut dna = Nuc::arr(b"AC");
         dna.iter_mut().revcomp();
-        assert_eq!(dna, Nuc::lit(b"GT"));
+        assert_eq!(dna, Nuc::arr(b"GT"));
 
-        let mut dna = Nuc::lit(b"ACT");
+        let mut dna = Nuc::arr(b"ACT");
         dna.iter_mut().revcomp();
-        assert_eq!(dna, Nuc::lit(b"AGT"));
+        assert_eq!(dna, Nuc::arr(b"AGT"));
 
-        let mut dna = Nuc::lit(b"GACT");
+        let mut dna = Nuc::arr(b"GACT");
         dna.iter_mut().revcomp();
-        assert_eq!(dna, Nuc::lit(b"AGTC"));
+        assert_eq!(dna, Nuc::arr(b"AGTC"));
     }
 
     #[test]
@@ -680,7 +680,7 @@ mod tests {
         }
 
         // Deliberately doing odd.
-        let mut dna = Nuc::lit(b"ACATTAG");
+        let mut dna = Nuc::arr(b"ACATTAG");
         dna.each_mut()
             .map(Some)
             .map(SingleUseMut)
