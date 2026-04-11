@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## Version 0.3.0 (2026-04-10)
 
 * Loads of adjustments to translation. There are now methods on `DnaSlice` and `Seq` to perform
   reverse complement translation almost as fast as ordinary translation, and a number of
