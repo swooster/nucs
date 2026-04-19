@@ -13,6 +13,9 @@ authors = [
 rust-version = "1.89"
 edition = "2024"
 
+[package.metadata.docs.rs]
+features = ["all"]
+
 [features]
 default = []
 all = ["proptest", "rand", "serde", "unsafe"]

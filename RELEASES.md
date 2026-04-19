@@ -1,5 +1,10 @@
 # Releases
 
+## Unreleased
+
+* Tweak [`docs.rs`](https://docs.rs/nucs/latest/nucs/) settings to build with all features
+  again. (#44)
+
 ## Version 0.3.0 (2026-04-10)
 
 * Loads of adjustments to translation. There are now methods on `DnaSlice` and `Seq` to perform
