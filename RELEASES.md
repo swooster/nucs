@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## Version 0.3.1 (2026-04-20)
 
 * Tweak [`docs.rs`](https://docs.rs/nucs/latest/nucs/) settings to build with all features
   again. (#44)
