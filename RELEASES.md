@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+* `Seq` now wraps subslices so e.g. `assert_eq!(&dna[2..], "ATCG");` now works. (#46)
+
 ## Version 0.3.1 (2026-04-20)
 
 * Tweak [`docs.rs`](https://docs.rs/nucs/latest/nucs/) settings to build with all features

@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 use std::str::FromStr;
 
 use ref_cast::{RefCastCustom, ref_cast_custom};
@@ -106,7 +106,7 @@ impl<T: ?Sized> Seq<T> {
     /// use nucs::{Nuc, Seq};
     ///
     /// let mut dna = Nuc::seq(b"ACTGACTG");
-    /// let partial_dna = Seq::wrap_mut(&mut dna[3..6]);
+    /// let partial_dna = &mut dna[3..6];
     /// assert_eq!(partial_dna, "GAC");
     /// partial_dna[1] = Nuc::C;
     /// assert_eq!(dna, "ACTGCCTG");
@@ -264,6 +264,26 @@ impl<T: ?Sized> DerefMut for Seq<T> {
     }
 }
 
+impl<T, I> Index<I> for Seq<T>
+where
+    T: Index<I, Output: SeqWrap + 'static>,
+{
+    type Output = <T::Output as SeqWrap>::Wrapped;
+
+    fn index(&self, index: I) -> &Self::Output {
+        self.0.index(index).wrap_slice()
+    }
+}
+
+impl<T, I> IndexMut<I> for Seq<T>
+where
+    T: IndexMut<I, Output: SeqWrap + 'static>,
+{
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        self.0.index_mut(index).wrap_mut_slice()
+    }
+}
+
 impl<T: FromIterator<A>, A> FromIterator<A> for Seq<T> {
     fn from_iter<U>(iter: U) -> Self
     where
@@ -349,6 +369,43 @@ fn iter_symbols<S: Symbol>(s: &str) -> impl Iterator<Item = Result<S, ParseSeqEr
                 pos,
             })
         })
+}
+
+/// Utility trait to wrap slices in [`Seq`] while leaving other types alone.
+///
+/// Used in [`Seq`]'s implementation of [`Index`].
+pub trait SeqWrap {
+    /// `Seq<Self>` for `[T]`, otherwise `Self`.
+    type Wrapped: ?Sized;
+
+    /// Wrap slices in [`Seq`], but returns other types unchanged.
+    fn wrap_slice(&self) -> &Self::Wrapped;
+    /// Wrap mutable slices in [`Seq`], but returns other types unchanged.
+    fn wrap_mut_slice(&mut self) -> &mut Self::Wrapped;
+}
+
+impl<S> SeqWrap for [S] {
+    type Wrapped = Seq<Self>;
+
+    fn wrap_slice(&self) -> &Self::Wrapped {
+        Seq::wrap(self)
+    }
+
+    fn wrap_mut_slice(&mut self) -> &mut Self::Wrapped {
+        Seq::wrap_mut(self)
+    }
+}
+
+impl<T> SeqWrap for T {
+    type Wrapped = Self;
+
+    fn wrap_slice(&self) -> &Self::Wrapped {
+        self
+    }
+
+    fn wrap_mut_slice(&mut self) -> &mut Self::Wrapped {
+        self
+    }
 }
 
 #[cfg(feature = "serde")]
@@ -437,18 +494,22 @@ mod tests {
 
     #[test]
     fn sanity_check_that_seq_works_with_arrays() {
-        let dna = Nuc::seq(b"ACGT");
+        let mut dna = Nuc::seq(b"ACGT");
         assert_eq!(dna, "ACGT");
         let peptide = dna.translated_to_vec_by(NCBI1);
         assert_eq!(peptide, "T");
+        dna[2] = Nuc::A;
+        assert_eq!(dna[1..], "CAT");
     }
 
     #[test]
     fn sanity_check_that_seq_works_with_vecs() {
-        let dna = Seq(Nuc::arr(b"ACGT").to_vec());
+        let mut dna = Seq(Nuc::arr(b"ACGT").to_vec());
         assert_eq!(dna, "ACGT");
         let peptide = dna.translated_to_vec_by(NCBI1);
         assert_eq!(peptide, "T");
+        dna[2] = Nuc::A;
+        assert_eq!(dna[1..], "CAT");
     }
 
     #[test]
@@ -462,9 +523,11 @@ mod tests {
     #[test]
     fn sanity_check_that_seq_works_with_vecdeques() {
         type VdSeq<T> = Seq<VecDeque<T>>;
-        let dna = VdSeq::from_iter(Nuc::arr(b"ACGT"));
+        let mut dna = VdSeq::from_iter(Nuc::arr(b"ACGT"));
         assert_eq!(dna, "ACGT");
         let peptide: VdSeq<_> = dna.translated_by(NCBI1);
         assert_eq!(peptide, "T");
+        dna[2] = Nuc::A;
+        assert_eq!(dna, "ACAT");
     }
 }
