@@ -1,3 +1,4 @@
+use std::borrow::{Borrow, BorrowMut};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut, Index, IndexMut};
@@ -284,6 +285,26 @@ where
     }
 }
 
+impl<T: Borrow<[S]>, S> Borrow<Seq<[S]>> for Seq<T> {
+    fn borrow(&self) -> &Seq<[S]> {
+        Seq::wrap(self.0.borrow())
+    }
+}
+
+impl<T: BorrowMut<[S]>, S> BorrowMut<Seq<[S]>> for Seq<T> {
+    fn borrow_mut(&mut self) -> &mut Seq<[S]> {
+        Seq::wrap_mut(self.0.borrow_mut())
+    }
+}
+
+impl<S: Clone> ToOwned for Seq<[S]> {
+    type Owned = Seq<Vec<S>>;
+
+    fn to_owned(&self) -> Self::Owned {
+        Seq(self.0.to_owned())
+    }
+}
+
 impl<T: FromIterator<A>, A> FromIterator<A> for Seq<T> {
     fn from_iter<U>(iter: U) -> Self
     where
@@ -490,7 +511,7 @@ mod serde_tests {
 mod tests {
     use std::collections::VecDeque;
 
-    use crate::{NCBI1, Nuc, Seq};
+    use crate::{Dna, NCBI1, Nuc, Seq};
 
     #[test]
     fn sanity_check_that_seq_works_with_arrays() {
@@ -500,6 +521,8 @@ mod tests {
         assert_eq!(peptide, "T");
         dna[2] = Nuc::A;
         assert_eq!(dna[1..], "CAT");
+        let owned: Dna = dna[2..].to_owned();
+        assert_eq!(owned, "AT");
     }
 
     #[test]
@@ -510,6 +533,8 @@ mod tests {
         assert_eq!(peptide, "T");
         dna[2] = Nuc::A;
         assert_eq!(dna[1..], "CAT");
+        let owned: Dna = dna[2..].to_owned();
+        assert_eq!(owned, "AT");
     }
 
     #[test]
@@ -518,6 +543,9 @@ mod tests {
         assert_eq!(dna, "ACGT");
         let peptide = dna.translated_to_vec_by(NCBI1);
         assert_eq!(peptide, "T");
+        assert_eq!(dna[1..], "CGT");
+        let owned: Dna = dna[2..].to_owned();
+        assert_eq!(owned, "GT");
     }
 
     #[test]
