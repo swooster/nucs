@@ -3,6 +3,7 @@
 ## Unreleased
 
 * `Seq` now wraps subslices so e.g. `assert_eq!(&dna[2..], "ATCG");` now works. (#46)
+* `Seq` now has limited support for `ToOwned`, `Borrow` and `BorrowMut`. (#47)
 
 ## Version 0.3.1 (2026-04-20)
 
