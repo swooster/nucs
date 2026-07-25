@@ -73,7 +73,7 @@ pub(crate) mod sealed {
 
         // I admit it's super icky that these exist yet aren't applicable to `Amino`s...
         // I'm doing it this way so I don't need to have an additional `Sealed` trait for
-        // nucleotides show up in docs. These are an internal detail so that `DnaSlice`
+        // nucleotides show up in docs. These are an internal detail so that `DnaSliceExt`
         // can have a blanket impl on `[impl Nucleotide]`, which makes trait inference
         // nicer for users.
 
