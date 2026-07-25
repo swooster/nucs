@@ -304,7 +304,7 @@ where
     }
 }
 
-fn iter_symbols<S: Symbol>(s: &str) -> impl Iterator<Item = Result<S, ParseSeqError>> {
+pub(crate) fn iter_symbols<S: Symbol>(s: &str) -> impl Iterator<Item = Result<S, ParseSeqError>> {
     s.split("")
         .filter(|c| !c.is_empty())
         .enumerate()
