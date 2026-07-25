@@ -693,7 +693,7 @@ mod tests {
                 for n3 in Nuc::ALL {
                     let codon = [n1, n2, n3];
                     let mut codon_rc = codon;
-                    codon_rc.revcomp();
+                    codon_rc.reverse_complement();
                     assert_eq!(
                         NCBI1.translate_rc(codon),
                         NCBI1.translate(codon_rc),
@@ -711,7 +711,7 @@ mod tests {
                 for n3 in AmbiNuc::ALL {
                     let codon = [n1, n2, n3];
                     let mut codon_rc = codon;
-                    codon_rc.revcomp();
+                    codon_rc.reverse_complement();
                     assert_eq!(
                         NCBI1.translate_rc(codon),
                         NCBI1.translate(codon_rc),

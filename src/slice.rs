@@ -508,11 +508,11 @@ pub trait DnaSliceExt {
     /// use nucs::{DnaSliceExt, Nuc};
     ///
     /// let mut dna = Nuc::arr(b"CATATTAC");
-    /// dna.revcomp();
+    /// dna.reverse_complement();
     /// assert_eq!(dna, Nuc::arr(b"GTAATATG"));
     /// ```
-    fn revcomp(&mut self) {
-        self.as_flat_dna_mut().iter_mut().revcomp();
+    fn reverse_complement(&mut self) {
+        self.as_flat_dna_mut().iter_mut().reverse_complement();
     }
 }
 

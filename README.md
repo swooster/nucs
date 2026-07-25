@@ -26,7 +26,7 @@ let codons = dna[4..].as_codons_mut();
 // Selects this: v-------------------------------------v
 //       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG    AA
 
-codons[3..8].revcomp();
+codons[3..8].reverse_complement();
 // Reverse complements this: v-----------------v
 //       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG    AA
 // Changing it to:           AGA TTT CCT AAG CGT
@@ -54,7 +54,7 @@ for _ in 0..4 {
 // Apply reverse compliment and NCBI1 non-destructively.
 let peptide: Peptide = dna
     .iter()
-    .revcomped()
+    .reverse_complemented()
     .translated_by(NCBI1)
     .collect();
 assert_eq!(peptide, "TRAVERSE*VIEW");
