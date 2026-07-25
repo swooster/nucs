@@ -41,7 +41,7 @@ Non-`Vec` containers are supported too, and it's possible to work with DNA non-d
 via iterators:
 ```rust
 use std::collections::VecDeque;
-use nucs::{DnaIter, NCBI1, Nuc, Peptide, Seq};
+use nucs::{DnaIterExt, NCBI1, Nuc, Peptide, Seq};
 
 let mut dna: Seq<VecDeque<Nuc>> =
     "ACTCTATCACCTACTCAGAGCGCTCCACCGCGCGTGT".parse().unwrap();

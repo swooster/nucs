@@ -7,13 +7,13 @@ use crate::translation::GeneticCode;
 use crate::{AmbiAmino, Amino, Nucleotide};
 
 /// Helpers for working with iterators of [`Nucleotide`]s.
-pub trait DnaIter: Iterator {
+pub trait DnaIterExt: Iterator {
     /// Return iterator over reverse-complemented nucleotides.
     ///
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaIter, Nuc};
+    /// use nucs::{DnaIterExt, Nuc};
     ///
     /// let complement = Nuc::arr(b"GATTACA").into_iter().revcomped();
     /// assert!(complement.eq(Nuc::arr(b"TGTAATC")));
@@ -33,7 +33,7 @@ pub trait DnaIter: Iterator {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaIter, Nuc};
+    /// use nucs::{DnaIterExt, Nuc};
     ///
     /// let complement = Nuc::arr(b"GATTACA").into_iter().complemented();
     /// assert!(complement.eq(Nuc::arr(b"CTAATGT")));
@@ -57,7 +57,7 @@ pub trait DnaIter: Iterator {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaIter, Nuc};
+    /// use nucs::{DnaIterExt, Nuc};
     ///
     /// let mut dna = Nuc::arr(b"GATTACA");
     /// dna.iter_mut().revcomp();
@@ -84,7 +84,7 @@ pub trait DnaIter: Iterator {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaIter, Nuc};
+    /// use nucs::{DnaIterExt, Nuc};
     ///
     /// let mut dna = Nuc::arr(b"GATTACA");
     /// dna.iter_mut().complement();
@@ -107,7 +107,7 @@ pub trait DnaIter: Iterator {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaIter, Nuc};
+    /// use nucs::{DnaIterExt, Nuc};
     /// use Nuc::{A, C, G, T};
     ///
     /// let codons = Nuc::arr(b"GATTACA").into_iter().codons();
@@ -132,7 +132,7 @@ pub trait DnaIter: Iterator {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaIter, Nuc};
+    /// use nucs::{DnaIterExt, Nuc};
     /// use Nuc::{A, C, G, T};
     ///
     /// let codons = Nuc::arr(b"GATTACA").into_iter().trimmed_to_codon();
@@ -161,7 +161,7 @@ pub trait DnaIter: Iterator {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaIter, NCBI1, Nuc, Seq};
+    /// use nucs::{DnaIterExt, NCBI1, Nuc, Seq};
     ///
     /// let peptide: Seq<Vec<_>> = Nuc::arr(b"TATGCGAGAAAC")
     ///     .into_iter()
@@ -186,7 +186,7 @@ pub trait DnaIter: Iterator {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaIter, Nuc};
+    /// use nucs::{DnaIterExt, Nuc};
     ///
     /// let dna = Nuc::arr(b"GATTACA").into_iter().display();
     /// assert_eq!(format!("{dna:#4}"), "GATT\nACA");
@@ -200,11 +200,11 @@ pub trait DnaIter: Iterator {
     }
 }
 
-impl<I: Iterator> DnaIter for I {}
+impl<I: Iterator> DnaIterExt for I {}
 
 /// An iterator that complements the nucleotides of an underlying iterator.
 ///
-/// This is created by the [`DnaIter::complemented`] method. See its documentation for details.
+/// This is created by the [`DnaIterExt::complemented`] method. See its documentation for details.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug, Default)]
 pub struct Complemented<N, I> {
@@ -250,7 +250,7 @@ where
 
 /// An iterator that groups nucleotides of an underlying iterator into codons.
 ///
-/// This is created by the [`DnaIter::codons`] method. See its documentation for details.
+/// This is created by the [`DnaIterExt::codons`] method. See its documentation for details.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug, Default)]
 pub struct Codons<N, I> {
@@ -304,7 +304,7 @@ where
 
 /// An iterator that translates codons via a [`GeneticCode`].
 ///
-/// This can be created by the [`DnaIter::translated_by`] method.
+/// This can be created by the [`DnaIterExt::translated_by`] method.
 /// See its documentation for details.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug, Default)]
@@ -362,7 +362,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use nucs::{Amino, DnaIter, Nuc};
+/// use nucs::{Amino, DnaIterExt, Nuc};
 ///
 /// let dna = Nuc::arr(b"GATTACA").into_iter().display();
 ///
@@ -389,7 +389,7 @@ pub struct Display<I>(I);
 impl<I> Display<I> {
     /// Construct a new [`Display`] from a cloneable iterable.
     ///
-    /// This is most often accessed via the [`DnaIter::display`] method.
+    /// This is most often accessed via the [`DnaIterExt::display`] method.
     pub fn new(iterable: I) -> Self
     where
         // make it easy to notice problems earlier
