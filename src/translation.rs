@@ -682,8 +682,8 @@ mod tests {
     #[test]
     fn fast_lookup_reverse_complement() {
         let dna = Nuc::arr(b"ATCTTCGGGGGGAATTAAAAACTAATAAAGTTCAACAATGGTTGGCATCTCTTCCCGGGG");
-        let peptide = dna.rc_translated_to_vec_by(NCBI1);
-        assert_eq!(peptide, Amino::arr(b"PREEMPTIVELY*FLIPPED"));
+        let peptide = dna.translated_by(NCBI1).reverse_complemented().to_seq();
+        assert_eq!(peptide, "PREEMPTIVELY*FLIPPED");
     }
 
     #[test]

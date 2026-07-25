@@ -33,7 +33,7 @@ codons[3..8].reverse_complement();
 
 dna.extend(const { Nuc::arr(b"CCAACCATTGATGAG") });
 
-let peptide = dna.translated_to_vec_by(NCBI1);
+let peptide = dna.translated_by(NCBI1).to_seq();
 assert_eq!(peptide, "THIS*IS*A*PEPTIDE");
 ```
 
@@ -62,7 +62,7 @@ assert_eq!(peptide, "TRAVERSE*VIEW");
 // Alternatively, when sequences are continuguous, reverse complement
 // translation can be performed nearly as fast as forward translation:
 let dna = Seq::wrap(dna.make_contiguous());
-let peptide = dna.rc_translated_to_vec_by(NCBI1);
+let peptide = dna.translated_by(NCBI1).reverse_complemented().to_seq();
 assert_eq!(peptide, "TRAVERSE*VIEW");
 ```
 
@@ -75,14 +75,14 @@ let mut dna = AmbiNuc::seq(b"TTAGCGGACGATTAT");
 
 // Because `dna` contains ambiguous nucleotides,
 // translating it produces an ambiguous peptide
-let peptide = dna.translated_to_vec_by(NCBI1);
+let peptide = dna.translated_by(NCBI1).to_seq();
 assert_eq!(peptide, "LADDY");
 
 dna[0] |= A | C;
 dna[6] |= A;
 dna[9] |= A;
 assert_eq!(dna, "HTAGCGRACRATTAT");
-let peptide = dna.translated_to_vec_by(NCBI1);
+let peptide = dna.translated_by(NCBI1).to_seq();
 assert_eq!(peptide, "JABBY");
 ```
 
