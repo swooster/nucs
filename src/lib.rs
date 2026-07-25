@@ -41,7 +41,7 @@
 //!
 //! // `DnaSlice` supplies helpers for working with slices:
 //! // (whether or not they're wrapped in `Seq`)
-//! use nucs::DnaSlice;
+//! use nucs::DnaSliceExt;
 //! use Nuc::{A, C, G, T};
 //! assert_eq!(
 //!     slice.reading_frames(),
@@ -148,7 +148,7 @@ pub use amino::{AmbiAmino, Amino};
 pub use iter::DnaIter;
 pub use nuc::{AmbiNuc, Nuc, Nucleotide};
 pub use seq::Seq;
-pub use slice::DnaSlice;
+pub use slice::DnaSliceExt;
 pub use symbol::Symbol;
 pub use translation::NCBI1;
 

@@ -1,6 +1,6 @@
 //! Types related to translation of codons into amino acids.
 
-use crate::{AmbiAmino, AmbiNuc, Amino, DnaSlice, Nuc, Nucleotide};
+use crate::{AmbiAmino, AmbiNuc, Amino, DnaSliceExt, Nuc, Nucleotide};
 
 /// Trait representing any type that can be used to translate codons into amino acids.
 ///

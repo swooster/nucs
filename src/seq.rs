@@ -8,7 +8,7 @@ use ref_cast::{RefCastCustom, ref_cast_custom};
 
 use crate::error::ParseSeqError;
 use crate::translation::GeneticCode;
-use crate::{DnaIter, DnaSlice, Nucleotide, Symbol};
+use crate::{DnaIter, DnaSliceExt, Nucleotide, Symbol};
 
 /// Provides DNA/peptide ergonomics for collections.
 ///
@@ -81,7 +81,7 @@ impl<T: ?Sized> Seq<T> {
     ///
     /// Most of `Seq`'s features (e.g. [`Display`] impl or string comparisons) work for
     /// `&Seq<[T]>` but not `Seq<&[T]>`, so `Seq::wrap(slice)` should be prefered
-    /// over `Seq(slice)`. For convenience, there's also [`DnaSlice::as_seq`].
+    /// over `Seq(slice)`. For convenience, there's also [`DnaSliceExt::as_seq`].
     ///
     /// # Examples
     ///
@@ -99,7 +99,7 @@ impl<T: ?Sized> Seq<T> {
     ///
     /// Most of `Seq`'s features (e.g. [`Display`] impl or string comparisons) work for
     /// `&mut Seq<[T]>` but not `Seq<&mut [T]>`, so `Seq::wrap_mut(slice)` should be prefered
-    /// over `Seq(slice)`. For convenience, there's also [`DnaSlice::as_seq_mut`].
+    /// over `Seq(slice)`. For convenience, there's also [`DnaSliceExt::as_seq_mut`].
     ///
     /// # Examples
     ///
@@ -166,10 +166,10 @@ impl<T: ?Sized> Seq<T> {
     pub fn translated_to_array_by<S, G, const N: usize>(
         &self,
         genetic_code: G,
-    ) -> Seq<[<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino; N]>
+    ) -> Seq<[<<[S] as DnaSliceExt>::Nuc as Nucleotide>::Amino; N]>
     where
         T: AsRef<[S]>,
-        [S]: DnaSlice,
+        [S]: DnaSliceExt,
         G: GeneticCode,
     {
         Seq(self.0.as_ref().translated_to_array_by(genetic_code))
@@ -193,10 +193,10 @@ impl<T: ?Sized> Seq<T> {
     pub fn rc_translated_to_array_by<S, G, const N: usize>(
         &self,
         genetic_code: G,
-    ) -> Seq<[<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino; N]>
+    ) -> Seq<[<<[S] as DnaSliceExt>::Nuc as Nucleotide>::Amino; N]>
     where
         T: AsRef<[S]>,
-        [S]: DnaSlice,
+        [S]: DnaSliceExt,
         G: GeneticCode,
     {
         Seq(self.0.as_ref().rc_translated_to_array_by(genetic_code))
@@ -218,10 +218,10 @@ impl<T: ?Sized> Seq<T> {
     pub fn translated_to_vec_by<S, G>(
         &self,
         genetic_code: G,
-    ) -> Seq<Vec<<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino>>
+    ) -> Seq<Vec<<<[S] as DnaSliceExt>::Nuc as Nucleotide>::Amino>>
     where
         T: AsRef<[S]>,
-        [S]: DnaSlice,
+        [S]: DnaSliceExt,
         G: GeneticCode,
     {
         Seq(self.0.as_ref().translated_to_vec_by(genetic_code))
@@ -241,10 +241,10 @@ impl<T: ?Sized> Seq<T> {
     pub fn rc_translated_to_vec_by<S, G>(
         &self,
         genetic_code: G,
-    ) -> Seq<Vec<<<[S] as DnaSlice>::Nuc as Nucleotide>::Amino>>
+    ) -> Seq<Vec<<<[S] as DnaSliceExt>::Nuc as Nucleotide>::Amino>>
     where
         T: AsRef<[S]>,
-        [S]: DnaSlice,
+        [S]: DnaSliceExt,
         G: GeneticCode,
     {
         Seq(self.0.as_ref().rc_translated_to_vec_by(genetic_code))

@@ -851,7 +851,7 @@ impl crate::symbol::sealed::Sealed for AmbiNuc {
 
 #[cfg(test)]
 mod tests {
-    use crate::DnaSlice;
+    use crate::DnaSliceExt;
 
     use super::*;
 

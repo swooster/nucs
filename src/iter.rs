@@ -503,7 +503,7 @@ mod tests {
     use proptest::proptest;
 
     use crate::proptest::any_dna;
-    use crate::{Dna, DnaSlice, NCBI1, Nuc, Seq};
+    use crate::{Dna, DnaSliceExt, NCBI1, Nuc, Seq};
 
     use super::*;
 
