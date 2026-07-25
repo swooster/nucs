@@ -54,8 +54,8 @@
 //! slice.revcomp(); // in-place reverse-complement
 //! assert_eq!(dna, "CTAATGT");
 //!
-//! // `DnaIter` supplies helpers for working with DNA iterators non-destructively:
-//! use nucs::DnaIter;
+//! // `DnaIterExt` supplies helpers for working with DNA iterators non-destructively:
+//! use nucs::DnaIterExt;
 //!
 //! let iter = dna
 //!     .iter()
@@ -145,7 +145,7 @@ pub mod slice;
 pub mod translation;
 
 pub use amino::{AmbiAmino, Amino};
-pub use iter::DnaIter;
+pub use iter::DnaIterExt;
 pub use nuc::{AmbiNuc, Nuc, Nucleotide};
 pub use seq::Seq;
 pub use slice::DnaSliceExt;

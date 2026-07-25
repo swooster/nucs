@@ -2,7 +2,7 @@
 
 use crate::iter::{Codons, Translated};
 use crate::translation::GeneticCode;
-use crate::{DnaIter, Nucleotide, Seq};
+use crate::{DnaIterExt, Nucleotide, Seq};
 
 #[cfg(feature = "unsafe")]
 use crate::symbol::sealed::Sealed;
