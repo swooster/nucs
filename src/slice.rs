@@ -1,8 +1,10 @@
 //! Slice-related types
 
+use std::fmt::{Debug, Display, Formatter};
 use std::iter::Rev;
 
 use crate::iter::{Codons, Complemented, Translated};
+use crate::seq::iter_symbols;
 use crate::translation::GeneticCode;
 use crate::{DnaIterExt, Nucleotide, Seq};
 
@@ -539,6 +541,14 @@ impl<'a, N: Nucleotide, G: GeneticCode> Translation<'a, N, G> {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    // not public until we make the types concrete; limited by borrowing G
+    fn iter(&self) -> impl Iterator<Item = N::Amino> + Clone {
+        self.dna
+            .iter()
+            .codons()
+            .map(|c| self.genetic_code.translate(c))
+    }
 }
 
 impl<'a, N: Nucleotide, G: GeneticCode> IntoIterator for Translation<'a, N, G> {
@@ -547,6 +557,34 @@ impl<'a, N: Nucleotide, G: GeneticCode> IntoIterator for Translation<'a, N, G> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.dna.iter().translated_by(self.genetic_code)
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> PartialEq<&str> for Translation<'_, N, G> {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> PartialEq<str> for Translation<'_, N, G> {
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> Display for Translation<'_, N, G> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        Display::fmt(&crate::iter::Display::new(self.iter()), f)
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> Debug for Translation<'_, N, G> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        // It's tempting to instead show the source DNA and genetic code,
+        // but this is more useful with `assert_eq`.
+        f.debug_tuple("Translation")
+            .field(&crate::iter::Display::new(self.iter()))
+            .finish()
     }
 }
 
@@ -697,6 +735,15 @@ impl<N: Nucleotide, G: GeneticCode> RcTranslation<'_, N, G> {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    // not public until we make the types concrete; limited by borrowing G
+    fn iter(&self) -> impl Iterator<Item = N::Amino> + Clone {
+        self.dna
+            .iter()
+            .reverse_complemented()
+            .codons()
+            .map(|c| self.genetic_code.translate(c))
+    }
 }
 
 impl<'a, N: Nucleotide, G: GeneticCode> IntoIterator for RcTranslation<'a, N, G> {
@@ -708,6 +755,34 @@ impl<'a, N: Nucleotide, G: GeneticCode> IntoIterator for RcTranslation<'a, N, G>
             .iter()
             .reverse_complemented()
             .translated_by(self.genetic_code)
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> PartialEq<&str> for RcTranslation<'_, N, G> {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> PartialEq<str> for RcTranslation<'_, N, G> {
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> Display for RcTranslation<'_, N, G> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        Display::fmt(&crate::iter::Display::new(self.iter()), f)
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> Debug for RcTranslation<'_, N, G> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        // It's tempting to instead show the source DNA and genetic code,
+        // but this is more useful with `assert_eq`.
+        f.debug_tuple("RcTranslation")
+            .field(&crate::iter::Display::new(self.iter()))
+            .finish()
     }
 }
 
@@ -746,5 +821,21 @@ mod tests {
         let mut dna = Nuc::arr(b"AAAACCCGGT");
         assert_eq!(anon_slice(&dna).display().to_string(), "AAAACCCGGT");
         assert_eq!(anon_mut_slice(&mut dna).display().to_string(), "AAAACCCGGT");
+    }
+
+    #[test]
+    fn translation_eq() {
+        let dna = Nuc::arr(b"AAAACCCGGT");
+        let translation = dna.translated_by(NCBI1);
+        assert_eq!(translation, "KTR");
+        assert_eq!(translation.reverse_complemented(), "TGF");
+    }
+
+    #[test]
+    fn translation_display() {
+        let dna = Nuc::arr(b"AAAACCCGGT");
+        let translation = dna.translated_by(NCBI1);
+        assert_eq!(translation.to_string(), "KTR");
+        assert_eq!(translation.reverse_complemented().to_string(), "TGF");
     }
 }
