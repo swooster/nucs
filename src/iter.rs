@@ -15,10 +15,10 @@ pub trait DnaIterExt: Iterator {
     /// ```
     /// use nucs::{DnaIterExt, Nuc};
     ///
-    /// let complement = Nuc::arr(b"GATTACA").into_iter().revcomped();
+    /// let complement = Nuc::arr(b"GATTACA").into_iter().reverse_complemented();
     /// assert!(complement.eq(Nuc::arr(b"TGTAATC")));
     /// ```
-    fn revcomped<N>(self) -> Complemented<N, std::iter::Rev<Self>>
+    fn reverse_complemented<N>(self) -> Complemented<N, std::iter::Rev<Self>>
     where
         Self: Sized + DoubleEndedIterator<Item: AsRef<N>>,
         N: Nucleotide,
@@ -60,10 +60,10 @@ pub trait DnaIterExt: Iterator {
     /// use nucs::{DnaIterExt, Nuc};
     ///
     /// let mut dna = Nuc::arr(b"GATTACA");
-    /// dna.iter_mut().revcomp();
+    /// dna.iter_mut().reverse_complement();
     /// assert_eq!(dna, Nuc::arr(b"TGTAATC"));
     /// ```
-    fn revcomp<N>(mut self)
+    fn reverse_complement<N>(mut self)
     where
         Self: Sized + DoubleEndedIterator<Item: AsMut<N>>,
         N: Nucleotide,
@@ -546,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn revcomp_type_inference() {
+    fn reverse_complement_type_inference() {
         fn anon_muts<'a>(
             iter: impl IntoIterator<IntoIter: DoubleEndedIterator, Item = &'a mut impl Nucleotide>,
         ) -> impl IntoIterator<IntoIter: DoubleEndedIterator, Item = &'a mut impl Nucleotide>
@@ -555,7 +555,7 @@ mod tests {
         }
 
         let mut dna = Nuc::arr(b"AAAACCCGGT");
-        anon_muts(&mut dna).into_iter().revcomp();
+        anon_muts(&mut dna).into_iter().reverse_complement();
         assert_eq!(dna, Nuc::arr(b"ACCGGGTTTT"));
     }
 
@@ -648,29 +648,29 @@ mod tests {
     }
 
     #[test]
-    fn revcomp() {
+    fn reverse_complement() {
         let mut dna = Nuc::arr(b"");
-        dna.iter_mut().revcomp(); // just sanity check a lack of panics
+        dna.iter_mut().reverse_complement(); // just sanity check a lack of panics
 
         let mut dna = Nuc::arr(b"A");
-        dna.iter_mut().revcomp();
+        dna.iter_mut().reverse_complement();
         assert_eq!(dna, Nuc::arr(b"T"));
 
         let mut dna = Nuc::arr(b"AC");
-        dna.iter_mut().revcomp();
+        dna.iter_mut().reverse_complement();
         assert_eq!(dna, Nuc::arr(b"GT"));
 
         let mut dna = Nuc::arr(b"ACT");
-        dna.iter_mut().revcomp();
+        dna.iter_mut().reverse_complement();
         assert_eq!(dna, Nuc::arr(b"AGT"));
 
         let mut dna = Nuc::arr(b"GACT");
-        dna.iter_mut().revcomp();
+        dna.iter_mut().reverse_complement();
         assert_eq!(dna, Nuc::arr(b"AGTC"));
     }
 
     #[test]
-    fn revcomp_calls_as_mut_once_per_nucleotide() {
+    fn reverse_complement_calls_as_mut_once_per_nucleotide() {
         struct SingleUseMut<'a>(Option<&'a mut Nuc>);
 
         impl AsMut<Nuc> for SingleUseMut<'_> {
@@ -685,28 +685,28 @@ mod tests {
             .map(Some)
             .map(SingleUseMut)
             .into_iter()
-            .revcomp();
+            .reverse_complement();
     }
 
     proptest! {
         #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
         #[test]
-        fn revcomp_is_involution(dna in any_dna(0..50)) {
-            let mut dna2: Vec<_> = dna.iter().revcomped().revcomped().collect();
+        fn reverse_complement_is_involution(dna in any_dna(0..50)) {
+            let mut dna2: Vec<_> = dna.iter().reverse_complemented().reverse_complemented().collect();
             assert_eq!(dna, dna2);
-            dna2.iter_mut().revcomp();
-            dna2.iter_mut().revcomp();
+            dna2.iter_mut().reverse_complement();
+            dna2.iter_mut().reverse_complement();
             assert_eq!(dna, dna2);
         }
 
         #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
         #[test]
-        fn revcomp_matches_reverse_and_complement(mut dna in any_dna(0..50)) {
-            // Iterator revcomp isn't trivial, so compare against something that is
+        fn reverse_complement_matches_reverse_and_complement(mut dna in any_dna(0..50)) {
+            // Iterator reverse_complement isn't trivial, so compare against something that is
             let mut expected = dna.clone();
             expected.reverse();
             expected.complement();
-            dna.iter_mut().revcomp();
+            dna.iter_mut().reverse_complement();
             assert_eq!(dna, expected);
         }
     }

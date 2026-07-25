@@ -51,7 +51,7 @@
 //!         &[[A, T, T]],
 //!     ] as [&[_]; _]
 //! );
-//! slice.revcomp(); // in-place reverse-complement
+//! slice.reverse_complement(); // in-place reverse-complement
 //! assert_eq!(dna, "CTAATGT");
 //!
 //! // `DnaIterExt` supplies helpers for working with DNA iterators non-destructively:
@@ -60,7 +60,7 @@
 //! let iter = dna
 //!     .iter()
 //!     .trimmed_to_codon()
-//!     .revcomped();
+//!     .reverse_complemented();
 //! // (cloneable) DNA iterators can be displayed too:
 //! let wrapped = format!("{:#3}", iter.display());
 //! assert_eq!(wrapped, "CAT\nTAG");

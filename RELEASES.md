@@ -6,6 +6,8 @@
 * `Seq` now has limited support for `ToOwned`, `Borrow` and `BorrowMut`. (#47)
 * `DnaSlice` and `DnaIter` were renamed to `DnaSliceExt` and `DnaIterExt` to reflect that
   they're extension traits. (#48, #49)
+* Rename `revcomp{,ed}` to `reverse_complement{,ed}`. The latter is annoying to type,
+  but easier to remember. (#51)
 
 ## Version 0.3.1 (2026-04-20)
 
