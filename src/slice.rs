@@ -10,7 +10,7 @@ use crate::symbol::sealed::Sealed;
 use crate::{AmbiNuc, Nuc};
 
 /// Helpers for working with slices of [`Nucleotide`]s.
-pub trait DnaSlice {
+pub trait DnaSliceExt {
     /// The type of [`Nucleotide`] this slice is made of.
     type Nuc: Nucleotide;
 
@@ -19,7 +19,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc, Seq};
+    /// use nucs::{DnaSliceExt, Nuc, Seq};
     /// use Nuc::{A, C, G, T};
     ///
     /// let codons = [
@@ -38,7 +38,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     /// use Nuc::{A, C, G, T};
     ///
     /// let mut codons = [
@@ -67,7 +67,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     /// use Nuc::{A, C, T};
     ///
     /// let dna = Nuc::arr(b"CATATTAC");
@@ -87,7 +87,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     ///
     /// let mut dna = Nuc::arr(b"CATATTAC");
     /// let codons = dna.as_codons_mut();
@@ -106,7 +106,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     /// use Nuc::{A, C, T};
     ///
     /// let dna = Nuc::arr(b"CATATTAC");
@@ -126,7 +126,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     ///
     /// let mut dna = Nuc::arr(b"CATATTAC");
     /// let codons = dna.as_rcodons_mut();
@@ -145,7 +145,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     ///
     /// let dna = Nuc::seq(b"ACTGACTG");
     /// let partial_dna = dna[3..6].as_seq();
@@ -162,7 +162,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     ///
     /// let mut dna = Nuc::seq(b"ACTGACTG");
     /// let partial_dna = dna[3..6].as_seq_mut();
@@ -182,7 +182,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     /// use Nuc::{A, C, T};
     ///
     /// let dna = Nuc::arr(b"ACATATTAC");
@@ -207,7 +207,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc, Seq};
     ///
     /// let peptide: Seq<Vec<_>> = Nuc::arr(b"TATGCGAGAAAC")
     ///     .translated_by(NCBI1)
@@ -228,7 +228,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc, Seq};
     ///
     /// let dna = Nuc::arr(b"TATGCGAGAAACA");
     /// let peptide = dna.translated_to_vec_by(NCBI1);
@@ -249,7 +249,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
+    /// use nucs::{AmbiNuc, DnaSliceExt, NCBI1, Seq};
     ///
     /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
     /// let peptide = dna.rc_translated_to_vec_by(NCBI1);
@@ -274,7 +274,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc, Seq};
     ///
     /// let dna = Nuc::arr(b"TATGCGAGAAACA");
     /// let peptide: [_; 4] = dna.translated_to_array_by(NCBI1);
@@ -298,7 +298,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
+    /// use nucs::{AmbiNuc, DnaSliceExt, NCBI1, Seq};
     ///
     /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
     /// let peptide: [_; 7] = dna.rc_translated_to_array_by(NCBI1);
@@ -324,7 +324,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, NCBI1, Nuc, Seq};
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc, Seq};
     ///
     /// let dna = Nuc::arr(b"TATGCGAGAAACA");
     /// let mut peptide: [_; 4] = Default::default();
@@ -362,7 +362,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, NCBI1, Seq};
+    /// use nucs::{AmbiNuc, DnaSliceExt, NCBI1, Seq};
     ///
     /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
     /// let mut peptide: [_; 7] = Default::default();
@@ -396,7 +396,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     ///
     /// let dna = Nuc::arr(b"CATATTAC");
     /// assert_eq!(dna.display().to_string(), "CATATTAC");
@@ -417,7 +417,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, Nuc};
+    /// use nucs::{AmbiNuc, DnaSliceExt, Nuc};
     ///
     /// let dna = Nuc::arr(b"CATATTAC");
     /// assert_eq!(dna.as_ambi_nucs(), AmbiNuc::arr(b"CATATTAC"));
@@ -441,7 +441,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, Nuc};
+    /// use nucs::{AmbiNuc, DnaSliceExt, Nuc};
     ///
     /// let dna = AmbiNuc::arr(b"CATATTAC");
     /// assert_eq!(dna.to_nucs().unwrap(), Nuc::arr(b"CATATTAC"));
@@ -468,7 +468,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{AmbiNuc, DnaSlice, Nuc};
+    /// use nucs::{AmbiNuc, DnaSliceExt, Nuc};
     ///
     /// let mut dna = AmbiNuc::arr(b"CATATTAC");
     /// if let Some(nucs) = dna.to_nucs_mut() {
@@ -490,7 +490,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     ///
     /// let mut dna = Nuc::arr(b"CATATTAC");
     /// dna.complement();
@@ -505,7 +505,7 @@ pub trait DnaSlice {
     /// # Examples
     ///
     /// ```
-    /// use nucs::{DnaSlice, Nuc};
+    /// use nucs::{DnaSliceExt, Nuc};
     ///
     /// let mut dna = Nuc::arr(b"CATATTAC");
     /// dna.revcomp();
@@ -516,7 +516,7 @@ pub trait DnaSlice {
     }
 }
 
-impl<N: Nucleotide> DnaSlice for [N] {
+impl<N: Nucleotide> DnaSliceExt for [N] {
     type Nuc = N;
 
     fn as_flat_dna(&self) -> &[N] {
@@ -528,7 +528,7 @@ impl<N: Nucleotide> DnaSlice for [N] {
     }
 }
 
-impl<N: Nucleotide> DnaSlice for [[N; 3]] {
+impl<N: Nucleotide> DnaSliceExt for [[N; 3]] {
     type Nuc = N;
 
     fn as_codons(&self) -> &[[N; 3]] {

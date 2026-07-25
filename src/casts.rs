@@ -31,7 +31,7 @@ fn is_representable_as_nucs(nucs: &[AmbiNuc]) -> bool {
 
 /// Cast [`&[Nuc]`](slice) to [`&[AmbiNuc]`](slice).
 ///
-/// You may wish to use [`DnaSlice::as_ambi_nucs`](crate::DnaSlice::as_ambi_nucs) instead.
+/// You may wish to use [`DnaSliceExt::as_ambi_nucs`](crate::DnaSliceExt::as_ambi_nucs) instead.
 ///
 /// # Examples
 ///
@@ -59,7 +59,7 @@ pub fn nucs_as_ambi(nucs: &[Nuc]) -> &[AmbiNuc] {
 ///
 /// [`None`] is returned if any nucleotides are degenerate (inexpressible by [`Nuc`]).
 ///
-/// You may wish to use [`DnaSlice::to_nucs`](crate::DnaSlice::to_nucs) instead.
+/// You may wish to use [`DnaSliceExt::to_nucs`](crate::DnaSliceExt::to_nucs) instead.
 ///
 /// # Examples
 ///
@@ -96,12 +96,12 @@ pub fn ambi_to_nucs(nucs: &[AmbiNuc]) -> Option<&[Nuc]> {
 ///
 /// [`None`] is returned if any nucleotides are degenerate (inexpressible by [`Nuc`]).
 ///
-/// You may wish to use [`DnaSlice::to_nucs_mut`](crate::DnaSlice::to_nucs_mut) instead.
+/// You may wish to use [`DnaSliceExt::to_nucs_mut`](crate::DnaSliceExt::to_nucs_mut) instead.
 ///
 /// # Examples
 ///
 /// ```
-/// use nucs::{AmbiNuc, DnaSlice, Nuc};
+/// use nucs::{AmbiNuc, DnaSliceExt, Nuc};
 ///
 /// let mut dna = AmbiNuc::arr(b"CATATTAC");
 /// if let Some(nucs) = nucs::casts::ambi_to_nucs_mut(&mut dna) {

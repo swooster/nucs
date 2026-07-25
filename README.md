@@ -17,7 +17,7 @@ Its design is based off of my experience using and helping maintain
 * ...tries to be consistent with Zipf's law of abbreviation when naming things.
 
 ```rust
-use nucs::{Dna, DnaSlice, NCBI1, Nuc};
+use nucs::{Dna, DnaSliceExt, NCBI1, Nuc};
 
 let mut dna: Dna = "ACACACATATCTTACGCTTAGGAAATCTGACCCGAA"
     .parse().unwrap();
