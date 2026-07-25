@@ -97,15 +97,15 @@
 //! assert_eq!(infinite_peptide.next(), Some(Amino::H));
 //!
 //! // Slices support much faster translation, and it's possible to
-//! // perform translations with allocations:
+//! // perform translations without allocations:
 //! let dna = Nuc::seq(b"TTTGAGCTCATAAACGAGA");
-//! let peptide: Seq<[_; 6]> = dna.translated_to_array_by(NCBI1);
+//! let peptide = dna.translated_by(NCBI1).to_array_seq::<6>();
 //! assert_eq!(peptide, "FELINE");
 //!
 //! // Even ambiguous DNA can be translated, and reverse-complement
 //! // translation can be performed at very little extra cost:
 //! let dna = AmbiNuc::seq(b"GCGCTCGGGAGACGCAAK");
-//! let peptide = dna.rc_translated_to_vec_by(NCBI1);
+//! let peptide = dna.translated_by(NCBI1).reverse_complemented().to_seq();
 //! assert_eq!(peptide, "JASPER");
 //! # Ok(())
 //! # }
