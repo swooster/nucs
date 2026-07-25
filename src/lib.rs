@@ -39,7 +39,7 @@
 //! let slice = Seq::wrap_mut(dna.make_contiguous());
 //! assert_eq!(slice, "ACATTAG");
 //!
-//! // `DnaSlice` supplies helpers for working with slices:
+//! // `DnaSliceExt` supplies helpers for working with slices:
 //! // (whether or not they're wrapped in `Seq`)
 //! use nucs::DnaSliceExt;
 //! use Nuc::{A, C, G, T};
