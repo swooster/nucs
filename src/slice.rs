@@ -226,8 +226,9 @@ pub trait DnaSliceExt {
         }
     }
 
-    /// Return object that implements [`Display`] for printing sequence compactly.
-    /// See [`nucs::iter::Display`](crate::iter::Display) for more details.
+    /// Return object that implements [`Display`](std::fmt::Display)
+    /// for printing sequence compactly. See [`nucs::iter::Display`](crate::iter::Display)
+    /// for more details.
     ///
     /// # Examples
     ///

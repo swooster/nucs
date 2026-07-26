@@ -666,8 +666,8 @@ pub struct Translation<'a, N, G> {
 impl<'a, N: Nucleotide, G: GeneticCode> Translation<'a, N, G> {
     /// Translate the reverse complement of the DNA instead.
     ///
-    /// For precomputed genetic codes such as [`NCBI1`](crate::NCBI1), this is *much*
-    /// faster than reverse-complementing the DNA and translating it as separate steps.
+    /// For precomputed genetic codes such as [`NCBI1`], this is *much* faster
+    /// than reverse-complementing the DNA and translating it as separate steps.
     /// The methods of [`RcTranslation`] are much the same as [`Translation`].
     pub fn reverse_complemented(self) -> RcTranslation<'a, N, G> {
         let Self { dna, genetic_code } = self;
