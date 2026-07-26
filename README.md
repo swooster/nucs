@@ -11,79 +11,66 @@ Its design is based off of my experience using and helping maintain
 <https://github.com/SecureDNA/quickdna>. My goals were to make an API that...
 
 * ...is solely focused on Rust.
-* ...integrates with the Rust `std` library (e.g. representing codons as `[Nuc; 3]` allows the
-  `std` library to understand that codons can be cheaply flattened into nucleotides).
-* ...is (largely) collection-agnostic.
-* ...tries to be consistent with Zipf's law of abbreviation when naming things.
+* ...integrates with the Rust `std` library.
+* ...is collection-agnostic where feasible.
+* ...tries to be consistent with Zipf's law of abbrevation for type names.
 
+The high-level API tries to declutter basic usage:
 ```rust
-use nucs::{Dna, DnaSliceExt, NCBI1, Nuc};
+use nucs::{Dna, NCBI1};
 
-let mut dna: Dna = "ACACACATATCTTACGCTTAGGAAATCTGACCCGAA"
-    .parse().unwrap();
+let dna: Dna = "TGTGCCACCAATATTCCC".parse().unwrap();
+// For testing convience, string comparisons are supported:
+assert_eq!(dna, "tgtgccaccaatattccc");
+assert_eq!(dna, "TGT GCC ACC AAT ATT CCC");
+assert_eq!(dna[5..15], "CACCAATATT");
+assert_eq!(dna.translated_by(NCBI1), "CATNIP");
+```
 
+...but tools are provided to aid using other collections. For example,
+the following code uses arrays to completely avoid allocations:
+```rust
+use nucs::{Amino, DnaSliceExt, NCBI1, Nuc};
+
+const SNEK: [Nuc; 23] = Nuc::arr(b"CCCGGGAATGGTTGGTCCTAGAG");
+
+let mut dna = SNEK;
+
+// Select this:         v---------------------v
+//                CCCG  GGA ATG GTT GGT CCT AGA  G
 let codons = dna[4..].as_codons_mut();
-// Selects this: v-------------------------------------v
-//       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG    AA
 
-codons[3..8].reverse_complement();
-// Reverse complements this: v-----------------v
-//       ACAC    ACA TAT CTT ACG CTT AGG AAA TCT GAC CCG    AA
-// Changing it to:           AGA TTT CCT AAG CGT
+// Reverse complement this: v---------v
+//                CCCG  GGA ATG GTT GGT CCT AGA  G
+// Changing it to:          ACC AAC CAT
+codons[1..4].reverse_complement();
 
-dna.extend(const { Nuc::arr(b"CCAACCATTGATGAG") });
+// (performs no allocations)
+let mut peptide: [Amino; 7] =
+    dna[2..].translated_by(NCBI1).try_into().unwrap();
 
-let peptide = dna.translated_by(NCBI1).to_seq();
-assert_eq!(peptide, "THIS*IS*A*PEPTIDE");
+assert_eq!(peptide, Amino::arr(b"REPTILE"));
+peptide[0] = Amino::P;
+peptide[5] = Amino::D;
+assert_eq!(peptide, Amino::arr(b"PEPTIDE"));
 ```
 
-Non-`Vec` containers are supported too, and it's possible to work with DNA non-destructively
-via iterators:
+Ambiguous nucleotides and amino acids are also supported:
 ```rust
-use std::collections::VecDeque;
-use nucs::{DnaIterExt, NCBI1, Nuc, Peptide, Seq};
+use nucs::{AmbiDna, AmbiNuc, NCBI1};
 
-let mut dna: Seq<VecDeque<Nuc>> =
-    "ACTCTATCACCTACTCAGAGCGCTCCACCGCGCGTGT".parse().unwrap();
-// Prepend things to the `VecDeque`;
-// it's no longer stored contiguously.
-for _ in 0..4 {
-    dna.push_front(Nuc::C);
-}
-
-// Apply reverse compliment and NCBI1 non-destructively.
-let peptide: Peptide = dna
-    .iter()
-    .reverse_complemented()
-    .translated_by(NCBI1)
-    .collect();
-assert_eq!(peptide, "TRAVERSE*VIEW");
-
-// Alternatively, when sequences are continuguous, reverse complement
-// translation can be performed nearly as fast as forward translation:
-let dna = Seq::wrap(dna.make_contiguous());
-let peptide = dna.translated_by(NCBI1).reverse_complemented().to_seq();
-assert_eq!(peptide, "TRAVERSE*VIEW");
-```
-
-Ambiguous nucleotides and amino acids are supported:
-```rust
-use nucs::{AmbiAmino, AmbiNuc, NCBI1};
-use AmbiNuc::{A, C};
-
-let mut dna = AmbiNuc::seq(b"TTAGCGGACGATTAT");
+let mut dna: AmbiDna = "TTAGCGGACGATTAT".parse().unwrap();
 
 // Because `dna` contains ambiguous nucleotides,
 // translating it produces an ambiguous peptide
-let peptide = dna.translated_by(NCBI1).to_seq();
-assert_eq!(peptide, "LADDY");
+assert_eq!(dna.translated_by(NCBI1), "LADDY");
 
+use AmbiNuc::{A, C};
 dna[0] |= A | C;
 dna[6] |= A;
 dna[9] |= A;
-assert_eq!(dna, "HTAGCGRACRATTAT");
-let peptide = dna.translated_by(NCBI1).to_seq();
-assert_eq!(peptide, "JABBY");
+
+assert_eq!(dna.translated_by(NCBI1), "JABBY");
 ```
 
 ## Planned functionality

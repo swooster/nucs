@@ -9,6 +9,127 @@
 //! The goal is to supply useful tools for working with DNA/peptides while attempting to
 //! integrate with the rest of Rust.
 //!
+//! ## Basic types
+//!
+//! The elementary types are [`Nuc`] and [`Amino`]. [`Dna`] and [`Peptide`] are like
+//! like [`Vec`]s with additional convenience features:
+//! ```
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use nucs::{Dna, NCBI1, Peptide};
+//!
+//! let dna: Dna = "TGTGCCACCAATATTCCC".parse()?;
+//! assert_eq!(dna, "TGTGCCACCAATATTCCC");
+//! let peptide: Peptide = dna.translated_by(NCBI1).into();
+//! assert_eq!(peptide, "CATNIP");
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! See [`Dna`] for an overview of common operations.
+//!
+//! ## Slices and iterators
+//!
+//! [`Dna`] and [`Peptide`] cover the basics, but additional helper methods can be
+//! accesed via [`DnaSliceExt`] and [`DnaIterExt`]:
+//! ```
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use nucs::{Dna, DnaSliceExt, DnaIterExt, NCBI1, Nuc, Peptide};
+//!
+//! let dna: Dna = "ACATTAG".parse()?;
+//!
+//! let reading_frames = dna.reading_frames().map(|rf| rf.translated_by(NCBI1));
+//! assert_eq!(reading_frames, ["TL","H*", "I"]);
+//!
+//! let infinite_peptide = Nuc::ALL.iter().cycle().translated_by(NCBI1);
+//! let peptide: Peptide = infinite_peptide.take(5).collect();
+//! assert_eq!(peptide, "TYVRT");
+//!
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Alternative collections
+//!
+//! [`Dna`] is just an alias for [`Seq<Vec<Nuc>>`]. Other types can behave like [`Dna`] when
+//! wrapped in `Seq`:
+//! ```
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use std::collections::VecDeque;
+//!
+//! use nucs::{Amino, Dna, NCBI1, Nuc, Seq};
+//!
+//! // `Seq` is just a wrapper type that can be added/removed at will:
+//! let dna = Seq([Nuc::C, Nuc::A ,Nuc::T]);
+//! let Seq([amino]) = dna.translated_by(NCBI1).try_into()?;
+//! assert_eq!(amino, Amino::H);
+//!
+//! // Non-indexable types are supported too:
+//! let mut dna: Seq<VecDeque<_>> = dna.into_iter().collect();
+//! dna.push_front(Nuc::A);
+//! assert_eq!(dna, "ACAT");
+//!
+//! // Slices are supported too, via `Seq::wrap`:
+//! let dna = Seq::wrap(dna.make_contiguous());
+//! assert_eq!(dna.translated_by(NCBI1), "T");
+//! # Ok(())
+//! # }
+//! ```
+//! See [`Seq`] for details.
+//!
+//! ## Ambiguous sequences
+//!
+//! [`AmbiNuc`], [`AmbiAmino`], [`AmbiDna`] and [`AmbiPeptide`] behave like
+//! [`Nuc`], [`Amino`], [`Dna`] and [`Peptide`] respectively, but represent ambiguous
+//! elements/sequences.
+//! ```
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use nucs::{AmbiDna, NCBI1};
+//!
+//! let dna: AmbiDna = "GCGCTCGGGAGACGCAAK".parse()?;
+//! assert_eq!(dna.translated_by(NCBI1).reverse_complemented(), "JASPER");
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # old docs (TODO: remove)
+//!
+//! ```
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! use nucs::Dna;
+//!
+//! // Whitespace and capitalization are ignored:
+//! let dna: Dna = "tgt GCC acc AAT att CCC".parse().unwrap();
+//!
+//! // `Dna` can be formatted:
+//! let msg = format!("DNA:\n{dna:#10}");
+//! assert_eq!(msg, "DNA:\nTGTGCCACCA\nATATTCCC");
+//!
+//! // String comparisons are supported, and are even zero-allocation:
+//! assert_eq!(dna, "tgtgccaccaatattccc");
+//! assert_eq!(dna, "TGT GCC ACC AAT ATT CCC");
+//!
+//! // Indexing is supported:
+//! assert_eq!(dna[5..15], "CACCAATATT");
+//!
+//! // As is iteration:
+//! //dna.iter().filter("")
+//! # Ok(())
+//! # }
+//! ```
+//!
+//!
+//! The core elemental types are [`Nuc`] (nucleotide) and [`Amino`] (amino acid). For typical
+//! situations, [`Dna`] and [`Peptide`] behave like [`Vec<Nuc>`] and [`Vec<Amino>`] respectively,
+//! but with some additional convenience features (particularly around parsing and display).
+//!
+//! When working with ambiguous sequences, there's [`AmbiNuc`], [`AmbiAmino`], [`AmbiDna`] and
+//! [`AmbiPeptide`], which behave analogously to their concrete counterparts. Anything ambiguous
+//! represents at least one possibility; there's no such thing as e.g. a null [`AmbiNuc`].
+//!
+//!
+//!
+//!
+//!
 //! ```
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // `Nuc` represents concrete nucleotides, and `Dna` holds `Nuc`s
@@ -153,10 +274,32 @@ pub use symbol::Symbol;
 pub use translation::NCBI1;
 
 /// Common nucleotide sequence type
+///
+/// This is like a [`Vec<Nuc>`] with additional capabilities:
+/// ```
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use nucs::{Dna, NCBI1};
+///
+/// // Whitespace and capitalization are ignored during parsing:
+/// let dna: Dna = "tgt GCC acc AAT att CCC".parse().unwrap();
+///
+/// // For testing/convenience, string comparisons are supported:
+/// assert_eq!(dna, "TGTGCCACCAATATTCCC");
+/// assert_eq!(dna[5..15], "CACCAATATT"); // this also applies to slices
+/// assert_eq!(dna.translated_by(NCBI1), "CATNIP"); // and translations
+/// # Ok(())
+/// # }
+/// ```
 pub type Dna = Seq<Vec<Nuc>>;
 /// Common ambiguous nucleotide sequence type
+///
+/// This behaves analogously to [`Dna`]; see its docs for an introduction.
 pub type AmbiDna = Seq<Vec<AmbiNuc>>;
 /// Common amino acid sequence type
+///
+/// This behaves analogously to [`Dna`]; see its docs for an introduction.
 pub type Peptide = Seq<Vec<Amino>>;
 /// Common ambiguous amino acid sequence type
+///
+/// This behaves analogously to [`Dna`]; see its docs for an introduction.
 pub type AmbiPeptide = Seq<Vec<AmbiAmino>>;

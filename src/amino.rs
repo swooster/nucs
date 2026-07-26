@@ -14,6 +14,8 @@ use crate::{Seq, Symbol};
 /// For details, see: <https://en.wikipedia.org/wiki/FASTA_format#Sequence_representation>
 ///
 /// [`Amino`]s are ordered by the value of their ASCII representation.
+///
+/// For ambiguous amino acids, see [`AmbiAmino`].
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Amino {
@@ -279,6 +281,8 @@ impl AsMut<Amino> for Amino {
 /// Beware that [`AmbiAmino`]'s order isn't alphabetic.
 ///
 /// </div>
+///
+/// For concrete aminos acids, see [`Amino`].
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AmbiAmino(NonZeroU32);
 

@@ -11,6 +11,8 @@ use crate::{AmbiAmino, Amino, Seq, Symbol};
 /// Concrete nucleotide
 ///
 /// [`Nuc`]s are ordered by the value of their ASCII representation.
+///
+/// For ambiguous nucloetides, see [`AmbiNuc`].
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum Nuc {
@@ -224,6 +226,8 @@ impl AsMut<Nuc> for Nuc {
 /// Beware that [`AmbiNuc`]'s order isn't alphabetic.
 ///
 /// </div>
+///
+/// For concrete nucloetides, see [`Nuc`].
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
 pub enum AmbiNuc {
