@@ -3,6 +3,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::iter::Rev;
 
+use crate::error::TryFillBufLenError;
 use crate::iter::{Codons, Complemented, DnaIterExt, Translated};
 use crate::symbol::iter_symbols;
 use crate::{AmbiAmino, AmbiNuc, Amino, DnaSliceExt, Nuc, Nucleotide, Seq};
@@ -1261,12 +1262,6 @@ where
         translation.try_into().map(Seq)
     }
 }
-
-/// Error returned when a translation has a different length from a buffer.
-///
-/// See [`Translation::try_fill`] or [`RcTranslation::try_fill`].
-#[derive(Debug, Clone, Copy)]
-pub struct TryFillBufLenError(());
 
 #[cfg(test)]
 mod tests {
