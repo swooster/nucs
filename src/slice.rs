@@ -413,5 +413,4 @@ mod tests {
         assert_eq!(anon_slice(&dna).display().to_string(), "AAAACCCGGT");
         assert_eq!(anon_mut_slice(&mut dna).display().to_string(), "AAAACCCGGT");
     }
-
 }
