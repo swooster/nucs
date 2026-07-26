@@ -8,8 +8,7 @@ use ref_cast::{RefCastCustom, ref_cast_custom};
 
 use crate::error::ParseSeqError;
 use crate::iter::{Codons, Translated};
-use crate::slice::Translation;
-use crate::translation::GeneticCode;
+use crate::translation::{GeneticCode, Translation};
 use crate::{DnaIterExt, DnaSliceExt, Nucleotide, Symbol};
 
 /// Provides DNA/peptide ergonomics for collections.

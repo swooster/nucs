@@ -1,6 +1,11 @@
 //! Types related to translation of codons into amino acids.
 
-use crate::{AmbiAmino, AmbiNuc, Amino, DnaSliceExt, Nuc, Nucleotide};
+use std::fmt::{Debug, Display, Formatter};
+use std::iter::Rev;
+
+use crate::iter::{Codons, Complemented, DnaIterExt, Translated};
+use crate::seq::iter_symbols;
+use crate::{AmbiAmino, AmbiNuc, Amino, DnaSliceExt, Nuc, Nucleotide, Seq};
 
 /// Trait representing any type that can be used to translate codons into amino acids.
 ///
@@ -647,6 +652,622 @@ const fn transpose<const N: usize, const M: usize>(table: [[Amino; N]; M]) -> [[
     output
 }
 
+/// Translation of DNA slice via a [`GeneticCode`].
+///
+/// The translation isn't actually executed until methods such as [`to_seq`](Self::to_seq)
+/// are invoked. Alternatively, this can be converted to an iterator, though the resulting
+/// translation is slower.
+#[derive(Clone, Copy)]
+pub struct Translation<'a, N, G> {
+    pub(crate) dna: &'a [N],
+    pub(crate) genetic_code: G,
+}
+
+impl<'a, N: Nucleotide, G: GeneticCode> Translation<'a, N, G> {
+    /// Translate the reverse complement of the DNA instead.
+    ///
+    /// For precomputed genetic codes such as [`NCBI1`], this is *much* faster
+    /// than reverse-complementing the DNA and translating it as separate steps.
+    /// The methods of [`RcTranslation`] are much the same as [`Translation`].
+    pub fn reverse_complemented(self) -> RcTranslation<'a, N, G> {
+        let Self { dna, genetic_code } = self;
+        RcTranslation { dna, genetic_code }
+    }
+
+    /// Perform translation, returning the peptide as [`Seq<Vec<T>>`].
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc};
+    ///
+    /// let dna = Nuc::arr(b"TATGCGAGAAACA");
+    /// let peptide = dna.translated_by(NCBI1).to_seq();
+    /// assert_eq!(peptide, "YARN");
+    /// ```
+    pub fn to_seq(&self) -> Seq<Vec<N::Amino>> {
+        self.into()
+    }
+
+    /// Perform translation, returning the peptide as [`Seq<[T; M]>`](Seq).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// If a non-panicking version is desired, use [`TryInto`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc};
+    ///
+    /// let dna = Nuc::arr(b"TATGCGAGAAACA");
+    /// let peptide = dna.translated_by(NCBI1).to_array_seq::<4>();
+    /// assert_eq!(peptide, "YARN");
+    /// ```
+    pub fn to_array_seq<const M: usize>(&self) -> Seq<[N::Amino; M]> {
+        self.try_into()
+            .expect("peptide length must match output array")
+    }
+
+    /// Perform translation, returning the peptide as [`Vec<T>`].
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc, Seq};
+    ///
+    /// let dna = Nuc::arr(b"TATGCGAGAAACA");
+    /// let peptide = dna.translated_by(NCBI1).to_vec();
+    /// assert_eq!(Seq(peptide), "YARN");
+    /// ```
+    pub fn to_vec(&self) -> Vec<N::Amino> {
+        self.into()
+    }
+
+    /// Perform translation, returning the peptide as [`[T; M]`](array).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// If a non-panicking version is desired, use [`TryInto`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc, Seq};
+    ///
+    /// let dna = Nuc::arr(b"TATGCGAGAAACA");
+    /// let peptide = dna.translated_by(NCBI1).to_array::<4>();
+    /// assert_eq!(Seq(peptide), "YARN");
+    /// ```
+    pub fn to_array<const M: usize>(&self) -> [N::Amino; M] {
+        self.try_into()
+            .expect("peptide length must match output array")
+    }
+
+    /// Perform translation, putting the peptide in the given buffer.
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Errors
+    ///
+    /// If `buf`'s length doesn't match the translation's [`len`](Self::len), then a
+    /// [`TryFillBufLenError`] error is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc, Seq};
+    ///
+    /// let dna = Nuc::arr(b"TATGCGAGAAACA");
+    /// let mut peptide: [_; 4] = Default::default();
+    /// dna.translated_by(NCBI1).try_fill(&mut peptide).unwrap();
+    /// assert_eq!(Seq(peptide), "YARN");
+    /// ```
+    pub fn try_fill(&self, buf: &mut [N::Amino]) -> Result<(), TryFillBufLenError> {
+        const CHUNK_LEN: usize = 16;
+        let codons = self.dna.as_codons();
+        if codons.len() != buf.len() {
+            return Err(TryFillBufLenError(()));
+        }
+        let (codon_chunks, codon_remainder) = codons.as_chunks::<CHUNK_LEN>();
+        let (amino_chunks, amino_remainder) = buf.as_chunks_mut::<CHUNK_LEN>();
+        for (aminos, codons) in std::iter::zip(amino_chunks, codon_chunks) {
+            for (amino, codon) in std::iter::zip(aminos, codons) {
+                *amino = self.genetic_code.translate(*codon);
+            }
+        }
+        for (amino, codon) in std::iter::zip(amino_remainder, codon_remainder) {
+            *amino = self.genetic_code.translate(*codon);
+        }
+        Ok(())
+    }
+
+    /// Return the number of amino acids in the translation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc};
+    ///
+    /// let translation = [Nuc::A; 20].translated_by(NCBI1);
+    /// assert_eq!(translation.len(), 6);
+    /// ```
+    pub fn len(&self) -> usize {
+        self.dna.as_codons().len()
+    }
+
+    /// Return `true` if the translation produces no amino acids.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc};
+    ///
+    /// assert!(Nuc::arr(b"AT").translated_by(NCBI1).is_empty());
+    /// assert!(!Nuc::arr(b"ACT").translated_by(NCBI1).is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    // not public until we make the types concrete; limited by borrowing G
+    fn iter(&self) -> impl Iterator<Item = N::Amino> + Clone {
+        self.dna
+            .iter()
+            .codons()
+            .map(|c| self.genetic_code.translate(c))
+    }
+}
+
+impl<'a, N: Nucleotide, G: GeneticCode> IntoIterator for Translation<'a, N, G> {
+    type Item = N::Amino;
+    type IntoIter = Translated<G, Codons<N, std::slice::Iter<'a, N>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.dna.iter().translated_by(self.genetic_code)
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> PartialEq<&str> for Translation<'_, N, G> {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> PartialEq<str> for Translation<'_, N, G> {
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> Display for Translation<'_, N, G> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        Display::fmt(&crate::iter::Display::new(self.iter()), f)
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> Debug for Translation<'_, N, G> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        // It's tempting to instead show the source DNA and genetic code,
+        // but this is more useful with `assert_eq`.
+        f.debug_tuple("Translation")
+            .field(&crate::iter::Display::new(self.iter()))
+            .finish()
+    }
+}
+
+impl<'a, N, G> From<Translation<'a, N, G>> for Vec<N::Amino>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    fn from(translation: Translation<'a, N, G>) -> Vec<N::Amino> {
+        (&translation).into()
+    }
+}
+
+impl<'a, N, G> From<&Translation<'a, N, G>> for Vec<N::Amino>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    fn from(translation: &Translation<'a, N, G>) -> Vec<N::Amino> {
+        let mut peptide = vec![Default::default(); translation.len()];
+        translation.try_fill(&mut peptide).unwrap();
+        peptide
+    }
+}
+
+impl<'a, N, G> From<Translation<'a, N, G>> for Seq<Vec<N::Amino>>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    fn from(translation: Translation<'a, N, G>) -> Seq<Vec<N::Amino>> {
+        (&translation).into()
+    }
+}
+
+impl<'a, N, G> From<&Translation<'a, N, G>> for Seq<Vec<N::Amino>>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    fn from(translation: &Translation<'a, N, G>) -> Seq<Vec<N::Amino>> {
+        Seq(translation.into())
+    }
+}
+
+impl<'a, const M: usize, N, G> TryFrom<Translation<'a, N, G>> for [N::Amino; M]
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    type Error = std::array::TryFromSliceError;
+
+    fn try_from(translation: Translation<'a, N, G>) -> Result<[N::Amino; M], Self::Error> {
+        (&translation).try_into()
+    }
+}
+
+impl<'a, const M: usize, N, G> TryFrom<&Translation<'a, N, G>> for [N::Amino; M]
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    type Error = std::array::TryFromSliceError;
+
+    fn try_from(translation: &Translation<'a, N, G>) -> Result<[N::Amino; M], Self::Error> {
+        let mut buf = [Default::default(); _];
+        if translation.try_fill(&mut buf).is_err() {
+            // Trigger error (uses appropriate sizes for future-proofing)
+            let peptide_sized_slice = &translation.dna[0..translation.len()];
+            let err = <[_; M]>::try_from(peptide_sized_slice).unwrap_err();
+            return Err(err);
+        }
+        Ok(buf)
+    }
+}
+
+impl<'a, const M: usize, N, G> TryFrom<Translation<'a, N, G>> for Seq<[N::Amino; M]>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    type Error = std::array::TryFromSliceError;
+
+    fn try_from(translation: Translation<'a, N, G>) -> Result<Seq<[N::Amino; M]>, Self::Error> {
+        (&translation).try_into()
+    }
+}
+
+impl<'a, const M: usize, N, G> TryFrom<&Translation<'a, N, G>> for Seq<[N::Amino; M]>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    type Error = std::array::TryFromSliceError;
+
+    fn try_from(translation: &Translation<'a, N, G>) -> Result<Seq<[N::Amino; M]>, Self::Error> {
+        translation.try_into().map(Seq)
+    }
+}
+
+/// Reverse-complemented translation of DNA slice via a [`GeneticCode`].
+///
+/// The translation isn't actually executed until methods such as [`to_seq`](Self::to_seq)
+/// are invoked. Alternatively, this can be converted to an iterator, though the resulting
+/// translation is slower.
+#[derive(Clone, Copy)]
+pub struct RcTranslation<'a, N, G> {
+    dna: &'a [N],
+    genetic_code: G,
+}
+
+impl<N: Nucleotide, G: GeneticCode> RcTranslation<'_, N, G> {
+    /// Perform reverse-complemented translation, returning the peptide as [`Seq<Vec<T>>`].
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, DnaSliceExt, NCBI1};
+    ///
+    /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.translated_by(NCBI1).reverse_complemented().to_seq();
+    /// assert_eq!(peptide, "FAST*RC");
+    /// ```
+    pub fn to_seq(&self) -> Seq<Vec<N::Amino>> {
+        self.into()
+    }
+
+    /// Perform reverse-complemented translation, returning the peptide as [`Seq<[T; M]>`](Seq).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// If a non-panicking version is desired, use [`TryInto`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, DnaSliceExt, NCBI1};
+    ///
+    /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.translated_by(NCBI1).reverse_complemented().to_array_seq::<7>();
+    /// assert_eq!(peptide, "FAST*RC");
+    /// ```
+    pub fn to_array_seq<const M: usize>(&self) -> Seq<[N::Amino; M]> {
+        self.try_into()
+            .expect("peptide length must match output array")
+    }
+
+    /// Perform reverse-complemented translation, returning the peptide as [`Vec<T>`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, DnaSliceExt, NCBI1, Seq};
+    ///
+    /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.translated_by(NCBI1).reverse_complemented().to_vec();
+    /// assert_eq!(Seq(peptide), "FAST*RC");
+    /// ```
+    pub fn to_vec(&self) -> Vec<N::Amino> {
+        self.into()
+    }
+
+    /// Perform reverse-complemented translation, returning the peptide as [`[T; M]`](array).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of codons to be translated is different from the returned array.
+    ///
+    /// If a non-panicking version is desired, use [`TryInto`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, DnaSliceExt, NCBI1, Seq};
+    ///
+    /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let peptide = dna.translated_by(NCBI1).reverse_complemented().to_array::<7>();
+    /// assert_eq!(Seq(peptide), "FAST*RC");
+    /// ```
+    pub fn to_array<const M: usize>(&self) -> [N::Amino; M] {
+        self.try_into()
+            .expect("peptide length must match output array")
+    }
+
+    /// Perform reverse-complemented translation, putting the peptide in the given buffer.
+    ///
+    /// For large sequences, this is usually much faster than populating directly from an iterator.
+    ///
+    /// # Errors
+    ///
+    /// If `buf`'s length doesn't match the translation's [`len`](Self::len), then a
+    /// [`TryFillBufLenError`] error is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{AmbiNuc, DnaSliceExt, NCBI1, Seq};
+    ///
+    /// let dna = AmbiNuc::arr(b"NGCACCGCTAGGTACTGGCGAA");
+    /// let mut peptide: [_; 7] = Default::default();
+    /// dna.translated_by(NCBI1).reverse_complemented().try_fill(&mut peptide).unwrap();
+    /// assert_eq!(Seq(peptide), "FAST*RC");
+    /// ```
+    pub fn try_fill(&self, buf: &mut [N::Amino]) -> Result<(), TryFillBufLenError> {
+        const CHUNK_LEN: usize = 16;
+        let codons = self.dna.as_rcodons();
+        if codons.len() != buf.len() {
+            return Err(TryFillBufLenError(()));
+        }
+        let (codon_chunks, codon_remainder) = codons.as_chunks::<CHUNK_LEN>();
+        let (amino_remainder, amino_chunks) = buf.as_rchunks_mut::<CHUNK_LEN>();
+        for (aminos, codons) in amino_chunks.iter_mut().rev().zip(codon_chunks) {
+            for (amino, codon) in aminos.iter_mut().rev().zip(codons) {
+                *amino = self.genetic_code.translate_rc(*codon);
+            }
+        }
+        for (amino, codon) in amino_remainder.iter_mut().rev().zip(codon_remainder) {
+            *amino = self.genetic_code.translate_rc(*codon);
+        }
+        Ok(())
+    }
+
+    /// Return the number of amino acids in the translation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc};
+    ///
+    /// let translation = [Nuc::A; 20].translated_by(NCBI1).reverse_complemented();
+    /// assert_eq!(translation.len(), 6);
+    /// ```
+    pub fn len(&self) -> usize {
+        self.dna.as_rcodons().len()
+    }
+
+    /// Return `true` if the translation produces no amino acids.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{DnaSliceExt, NCBI1, Nuc};
+    ///
+    /// assert!(Nuc::arr(b"AT").translated_by(NCBI1).reverse_complemented().is_empty());
+    /// assert!(!Nuc::arr(b"ACT").translated_by(NCBI1).reverse_complemented().is_empty());
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    // not public until we make the types concrete; limited by borrowing G
+    fn iter(&self) -> impl Iterator<Item = N::Amino> + Clone {
+        self.dna
+            .iter()
+            .reverse_complemented()
+            .codons()
+            .map(|c| self.genetic_code.translate(c))
+    }
+}
+
+impl<'a, N: Nucleotide, G: GeneticCode> IntoIterator for RcTranslation<'a, N, G> {
+    type Item = N::Amino;
+    type IntoIter = Translated<G, Codons<N, Complemented<N, Rev<std::slice::Iter<'a, N>>>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.dna
+            .iter()
+            .reverse_complemented()
+            .translated_by(self.genetic_code)
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> PartialEq<&str> for RcTranslation<'_, N, G> {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> PartialEq<str> for RcTranslation<'_, N, G> {
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> Display for RcTranslation<'_, N, G> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        Display::fmt(&crate::iter::Display::new(self.iter()), f)
+    }
+}
+
+impl<N: Nucleotide, G: GeneticCode> Debug for RcTranslation<'_, N, G> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        // It's tempting to instead show the source DNA and genetic code,
+        // but this is more useful with `assert_eq`.
+        f.debug_tuple("RcTranslation")
+            .field(&crate::iter::Display::new(self.iter()))
+            .finish()
+    }
+}
+
+impl<'a, N, G> From<RcTranslation<'a, N, G>> for Vec<N::Amino>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    fn from(translation: RcTranslation<'a, N, G>) -> Vec<N::Amino> {
+        (&translation).into()
+    }
+}
+
+impl<'a, N, G> From<&RcTranslation<'a, N, G>> for Vec<N::Amino>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    fn from(translation: &RcTranslation<'a, N, G>) -> Vec<N::Amino> {
+        let mut peptide = vec![Default::default(); translation.len()];
+        translation.try_fill(&mut peptide).unwrap();
+        peptide
+    }
+}
+
+impl<'a, N, G> From<RcTranslation<'a, N, G>> for Seq<Vec<N::Amino>>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    fn from(translation: RcTranslation<'a, N, G>) -> Seq<Vec<N::Amino>> {
+        (&translation).into()
+    }
+}
+
+impl<'a, N, G> From<&RcTranslation<'a, N, G>> for Seq<Vec<N::Amino>>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    fn from(translation: &RcTranslation<'a, N, G>) -> Seq<Vec<N::Amino>> {
+        Seq(translation.into())
+    }
+}
+
+impl<'a, const M: usize, N, G> TryFrom<RcTranslation<'a, N, G>> for [N::Amino; M]
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    type Error = std::array::TryFromSliceError;
+
+    fn try_from(translation: RcTranslation<'a, N, G>) -> Result<[N::Amino; M], Self::Error> {
+        (&translation).try_into()
+    }
+}
+
+impl<'a, const M: usize, N, G> TryFrom<&RcTranslation<'a, N, G>> for [N::Amino; M]
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    type Error = std::array::TryFromSliceError;
+
+    fn try_from(translation: &RcTranslation<'a, N, G>) -> Result<[N::Amino; M], Self::Error> {
+        let mut buf = [Default::default(); _];
+        if translation.try_fill(&mut buf).is_err() {
+            // Trigger error (uses appropriate sizes for future-proofing)
+            let peptide_sized_slice = &translation.dna[0..translation.len()];
+            let err = <[_; M]>::try_from(peptide_sized_slice).unwrap_err();
+            return Err(err);
+        }
+        Ok(buf)
+    }
+}
+
+impl<'a, const M: usize, N, G> TryFrom<RcTranslation<'a, N, G>> for Seq<[N::Amino; M]>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    type Error = std::array::TryFromSliceError;
+
+    fn try_from(translation: RcTranslation<'a, N, G>) -> Result<Seq<[N::Amino; M]>, Self::Error> {
+        (&translation).try_into()
+    }
+}
+
+impl<'a, const M: usize, N, G> TryFrom<&RcTranslation<'a, N, G>> for Seq<[N::Amino; M]>
+where
+    N: Nucleotide,
+    G: GeneticCode,
+{
+    type Error = std::array::TryFromSliceError;
+
+    fn try_from(translation: &RcTranslation<'a, N, G>) -> Result<Seq<[N::Amino; M]>, Self::Error> {
+        translation.try_into().map(Seq)
+    }
+}
+
+/// Error returned when a translation has a different length from a buffer.
+///
+/// See [`Translation::try_fill`] or [`RcTranslation::try_fill`].
+#[derive(Debug, Clone, Copy)]
+pub struct TryFillBufLenError(());
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -720,6 +1341,22 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn translation_eq() {
+        let dna = Nuc::arr(b"AAAACCCGGT");
+        let translation = dna.translated_by(NCBI1);
+        assert_eq!(translation, "KTR");
+        assert_eq!(translation.reverse_complemented(), "TGF");
+    }
+
+    #[test]
+    fn translation_display() {
+        let dna = Nuc::arr(b"AAAACCCGGT");
+        let translation = dna.translated_by(NCBI1);
+        assert_eq!(translation.to_string(), "KTR");
+        assert_eq!(translation.reverse_complemented().to_string(), "TGF");
     }
 
     fn assert_genetic_codes_eq(g1: &impl GeneticCode, g2: &impl GeneticCode) {
