@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::str::FromStr;
 
 use crate::Seq;
-use crate::error::ParseSymbolError;
+use crate::error::{ParseSeqError, ParseSymbolError};
 
 /// A sequence element; either [`Nuc`](crate::Nuc), [`AmbiNuc`](crate::AmbiNuc),
 /// [`Amino`](crate::Amino) or [`AmbiAmino`](crate::AmbiAmino).
@@ -92,4 +92,19 @@ pub(crate) mod sealed {
             unimplemented!()
         }
     }
+}
+
+pub(crate) fn iter_symbols<S: Symbol>(s: &str) -> impl Iterator<Item = Result<S, ParseSeqError>> {
+    s.split("")
+        .filter(|c| !c.is_empty())
+        .enumerate()
+        .filter(|(_, c)| !c.trim().is_empty()) // ignore whitespace; maybe I shouldn't?
+        .map(|(pos, chr)| {
+            chr.parse().map_err(|_| ParseSeqError {
+                kind: S::NAME,
+                expected: S::EXPECTED,
+                chr: chr.chars().next().expect("BUG: chr was impossibly empty"),
+                pos,
+            })
+        })
 }

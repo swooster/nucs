@@ -86,3 +86,10 @@ impl Debug for ParseSeqError {
 }
 
 impl Error for ParseSeqError {}
+
+/// Error returned when a translation has a different length from a buffer.
+///
+/// See [`Translation::try_fill`](crate::translation::Translation::try_fill)
+/// or [`RcTranslation::try_fill`](crate::translation::RcTranslation::try_fill).
+#[derive(Debug, Clone, Copy)]
+pub struct TryFillBufLenError(pub(crate) ());
