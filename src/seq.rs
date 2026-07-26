@@ -8,6 +8,7 @@ use ref_cast::{RefCastCustom, ref_cast_custom};
 
 use crate::error::ParseSeqError;
 use crate::iter::{Codons, Translated};
+use crate::symbol::iter_symbols;
 use crate::translation::{GeneticCode, Translation};
 use crate::{DnaIterExt, DnaSliceExt, Nucleotide, Symbol};
 
@@ -301,21 +302,6 @@ where
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         iter_symbols(s).collect::<Result<_, _>>().map(Self)
     }
-}
-
-pub(crate) fn iter_symbols<S: Symbol>(s: &str) -> impl Iterator<Item = Result<S, ParseSeqError>> {
-    s.split("")
-        .filter(|c| !c.is_empty())
-        .enumerate()
-        .filter(|(_, c)| !c.trim().is_empty()) // ignore whitespace; maybe I shouldn't?
-        .map(|(pos, chr)| {
-            chr.parse().map_err(|_| ParseSeqError {
-                kind: S::NAME,
-                expected: S::EXPECTED,
-                chr: chr.chars().next().expect("BUG: chr was impossibly empty"),
-                pos,
-            })
-        })
 }
 
 /// Utility trait to wrap slices in [`Seq`] while leaving other types alone.

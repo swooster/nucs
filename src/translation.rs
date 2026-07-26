@@ -4,7 +4,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::iter::Rev;
 
 use crate::iter::{Codons, Complemented, DnaIterExt, Translated};
-use crate::seq::iter_symbols;
+use crate::symbol::iter_symbols;
 use crate::{AmbiAmino, AmbiNuc, Amino, DnaSliceExt, Nuc, Nucleotide, Seq};
 
 /// Trait representing any type that can be used to translate codons into amino acids.
