@@ -117,6 +117,32 @@ impl<T: ?Sized> Seq<T> {
     #[ref_cast_custom]
     pub fn wrap_mut(slice: &mut T) -> &mut Self;
 
+    /// Return all 3 reading frames.
+    ///
+    /// The `i`th reading frame is a slice starting at `i` that's as long as possible while
+    /// being evenly divisible into codons (i.e. its length is a multiple of 3).
+    ///
+    /// If a reading frame would start past the end of the DNA, it's empty.
+    ///
+    /// This is like [`DnaSliceExt::reading_frames`] except the reading frames are wrapped
+    /// in [`Seq`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::Nuc;
+    ///
+    /// let dna = Nuc::seq(b"ACATATTAC");
+    /// assert_eq!(dna.reading_frames(), ["ACA TAT TAC", "CAT ATT", "ATA TTA"]);
+    /// ```
+    pub fn reading_frames<'a, S: 'a>(&'a self) -> [&'a Seq<[<[S] as DnaSliceExt>::Nuc]>; 3]
+    where
+        T: AsRef<[S]>,
+        [S]: DnaSliceExt,
+    {
+        self.0.as_ref().reading_frames().map(Seq::wrap)
+    }
+
     /// Return translation of DNA via [`GeneticCode`].
     ///
     /// This returns a builder for performing translations. See [`Translation`] for details.
