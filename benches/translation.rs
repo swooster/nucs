@@ -1,10 +1,10 @@
 use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use rand::{Rng, SeedableRng, rngs::StdRng};
+use rand::RngExt;
 
 use nucs::{AmbiNuc, DnaSliceExt, NCBI1, Nuc};
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let mut rng = StdRng::from_os_rng();
+    let mut rng = rand::rng();
 
     let lens = [16, 256, 1024];
 
