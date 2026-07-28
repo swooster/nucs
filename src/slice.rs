@@ -173,10 +173,12 @@ pub trait DnaSliceExt {
         Seq::wrap_mut(self)
     }
 
-    /// Return all 3 reading frames of codons
+    /// Return all 3 reading frames
     ///
-    /// Akin to non-panicking version of:
-    /// `[dna[0..].as_codons(), dna[1..].as_codons(), dna[2..].as_codons()]`
+    /// The `i`th reading frame is a slice starting at `i` that's as long as possible while
+    /// being evenly divisible into codons (i.e. its length is a multiple of 3).
+    ///
+    /// If a reading frame would start past the end of the DNA, it's empty.
     ///
     /// # Examples
     ///
@@ -188,14 +190,20 @@ pub trait DnaSliceExt {
     /// assert_eq!(
     ///     dna.reading_frames(),
     ///     [
-    ///         &[[A, C, A], [T, A, T], [T, A, C]] as &[_],
-    ///         &[[C, A, T], [A, T, T]],
-    ///         &[[A, T, A], [T, T, A]],
+    ///         &[A, C, A, T, A, T, T, A, C] as &[_],
+    ///         &[C, A, T, A, T, T],
+    ///         &[A, T, A, T, T, A],
     ///     ]
     /// );
     /// ```
-    fn reading_frames(&self) -> [&[[Self::Nuc; 3]]; 3] {
-        std::array::from_fn(|i| self.as_flat_dna().get(i..).unwrap_or_default().as_codons())
+    fn reading_frames(&self) -> [&[Self::Nuc]; 3] {
+        std::array::from_fn(|i| {
+            self.as_flat_dna()
+                .get(i..)
+                .unwrap_or_default()
+                .as_codons()
+                .as_flat_dna()
+        })
     }
 
     /// Return translation of DNA via [`GeneticCode`].

@@ -43,12 +43,13 @@
 //! // (whether or not they're wrapped in `Seq`)
 //! use nucs::DnaSliceExt;
 //! use Nuc::{A, C, G, T};
+//! let slice = dna.make_contiguous();
 //! assert_eq!(
 //!     slice.reading_frames(),
 //!     [
-//!         &[[A, C, A], [T, T, A]],
-//!         &[[C, A, T], [T, A ,G]],
-//!         &[[A, T, T]],
+//!         &[A, C, A, T, T, A],
+//!         &[C, A, T, T, A ,G],
+//!         &[A, T, T],
 //!     ] as [&[_]; _]
 //! );
 //! slice.reverse_complement(); // in-place reverse-complement
