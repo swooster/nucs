@@ -250,6 +250,18 @@ impl FromStr for Amino {
     }
 }
 
+impl PartialEq<&str> for Amino {
+    fn eq(&self, s: &&str) -> bool {
+        self == *s
+    }
+}
+
+impl PartialEq<str> for Amino {
+    fn eq(&self, s: &str) -> bool {
+        Seq([*self]) == s
+    }
+}
+
 impl AsRef<Amino> for Amino {
     fn as_ref(&self) -> &Amino {
         self
@@ -719,6 +731,18 @@ impl PartialOrd<Amino> for AmbiAmino {
 impl PartialOrd<AmbiAmino> for Amino {
     fn partial_cmp(&self, other: &AmbiAmino) -> Option<Ordering> {
         other.partial_cmp(self).map(Ordering::reverse)
+    }
+}
+
+impl PartialEq<&str> for AmbiAmino {
+    fn eq(&self, s: &&str) -> bool {
+        self == *s
+    }
+}
+
+impl PartialEq<str> for AmbiAmino {
+    fn eq(&self, s: &str) -> bool {
+        Seq([*self]) == s
     }
 }
 

@@ -200,6 +200,18 @@ impl TryFrom<AmbiNuc> for Nuc {
     }
 }
 
+impl PartialEq<&str> for Nuc {
+    fn eq(&self, s: &&str) -> bool {
+        self == *s
+    }
+}
+
+impl PartialEq<str> for Nuc {
+    fn eq(&self, s: &str) -> bool {
+        Seq([*self]) == s
+    }
+}
+
 impl AsRef<Nuc> for Nuc {
     fn as_ref(&self) -> &Nuc {
         self
@@ -635,6 +647,18 @@ impl PartialOrd<Nuc> for AmbiNuc {
 impl PartialOrd<AmbiNuc> for Nuc {
     fn partial_cmp(&self, other: &AmbiNuc) -> Option<Ordering> {
         other.partial_cmp(self).map(Ordering::reverse)
+    }
+}
+
+impl PartialEq<&str> for AmbiNuc {
+    fn eq(&self, s: &&str) -> bool {
+        self == *s
+    }
+}
+
+impl PartialEq<str> for AmbiNuc {
+    fn eq(&self, s: &str) -> bool {
+        Seq([*self]) == s
     }
 }
 
