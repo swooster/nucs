@@ -25,6 +25,7 @@ pub trait Symbol:
     + PartialOrd<Self::Concrete>
     + PartialEq<Self::Ambiguous>
     + PartialOrd<Self::Ambiguous>
+    + PartialEq<str>
     + Into<Self::Ambiguous>
     + TryInto<Self::Concrete>
     + Hash

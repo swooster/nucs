@@ -9,6 +9,7 @@
 * Rename `revcomp{,ed}` to `reverse_complement{,ed}`. The latter is annoying to type,
   but easier to remember. (#51)
 * Rework translation to use more of a builder pattern. (#52, #53, #54)
+* Allow comparison between `Symbol`s and strings. (#57)
 
 ## Version 0.3.1 (2026-04-20)
 
