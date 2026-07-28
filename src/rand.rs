@@ -1,11 +1,11 @@
 //! `rand` trait implementations
 
-use rand::Rng;
 use rand::distr::{Distribution, StandardUniform};
+use rand::{Rng, RngExt};
 
 use crate::{AmbiAmino, AmbiNuc, Amino, Nuc};
 
-// NOTE: The disperate styles of random generation are a result of what I've found to be
+// NOTE: The disparate styles of random generation are a result of what I've found to be
 // fastest for each type. Also note that the size of the `expect` messages seems to influence
 // speed even though it appears to be dead code..? ¯\_(ツ)_/¯
 

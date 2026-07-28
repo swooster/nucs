@@ -11,6 +11,7 @@
 * Rework translation to use more of a builder pattern. (#52, #53, #54)
 * Allow comparison between `Symbol`s and strings. (#57)
 * Make `DnaSliceExt::reading_frames` return flat DNA and add `Seq::reading_frames`. (#58)
+* Upgrade optional `rand` dependency to 0.10.0. (#59)
 
 ## Version 0.3.1 (2026-04-20)
 
