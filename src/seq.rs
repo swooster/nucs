@@ -202,6 +202,44 @@ impl<T: ?Sized> Seq<T> {
     {
         self.0.into_iter().translated_by(genetic_code)
     }
+
+    /// Perform in-place complement.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::Nuc;
+    ///
+    /// let mut dna = Nuc::seq(b"CATATTAC");
+    /// dna.complement();
+    /// assert_eq!(dna, "GTATAATG");
+    /// ```
+    pub fn complement<S>(&mut self)
+    where
+        T: AsMut<[S]>,
+        [S]: DnaSliceExt,
+    {
+        self.0.as_mut().complement();
+    }
+
+    /// Perform in-place reverse-complement.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::Nuc;
+    ///
+    /// let mut dna = Nuc::seq(b"CATATTAC");
+    /// dna.reverse_complement();
+    /// assert_eq!(dna, "GTAATATG");
+    /// ```
+    pub fn reverse_complement<S>(&mut self)
+    where
+        T: AsMut<[S]>,
+        [S]: DnaSliceExt,
+    {
+        self.0.as_mut().reverse_complement();
+    }
 }
 
 impl<T: ?Sized> Deref for Seq<T> {
