@@ -97,12 +97,18 @@ jobs:
       - name: Run Miri
         run: cargo miri test --features all
 
-  # Provide a single check for branch protection rules to rely on
-  # (needed due to the tests matrix)
+  # Provide a single check for branch protection rules to rely on (needed due to the tests matrix)
+  # Unfortunately, Github has a major footgun: Check rules treat skipped tests as successful.
+  # Seriously, WTF?
+  # As a workaround, we always run this job, and manually test that its dependencies succeeded.
   ci-passed:
     name: Everything passed
+    needs: [ tests, nightly ]
+    if: always()
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    needs: [ tests, nightly ]
     steps:
-        - run: echo "CI passed!"
+        - name: Check that dependencies all passed.
+          run: jq -e 'length >= 2 and all(. == "success")' <<< "$DEPENDENCIES_STATUS"
+          env:
+            DEPENDENCIES_STATUS: ${{ toJSON(needs.*.result) }}
