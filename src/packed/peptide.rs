@@ -28,32 +28,32 @@ use super::{ArrayDefault, ArrayDivide};
 pub struct PackedPeptide(Vec<u8>);
 
 impl From<&[Amino]> for PackedPeptide {
-    fn from(aminos: &[Amino]) -> PackedPeptide {
-        let packed_len = (2 * aminos.len()).div_ceil(3);
+    fn from(peptide: &[Amino]) -> PackedPeptide {
+        let packed_len = (2 * peptide.len()).div_ceil(3);
         let mut packed = vec![0; packed_len];
-        pack(&mut packed, aminos);
+        pack(&mut packed, peptide);
         Self(packed)
     }
 }
 
 impl From<PackedPeptide> for Vec<Amino> {
-    fn from(packed_aminos: PackedPeptide) -> Vec<Amino> {
-        (&packed_aminos).into()
+    fn from(packed_peptide: PackedPeptide) -> Vec<Amino> {
+        (&packed_peptide).into()
     }
 }
 
 impl From<&PackedPeptide> for Vec<Amino> {
-    fn from(packed_aminos: &PackedPeptide) -> Vec<Amino> {
-        let len = match packed_aminos.0.as_chunks::<2>() {
+    fn from(packed_peptide: &PackedPeptide) -> Vec<Amino> {
+        let len = match packed_peptide.0.as_chunks::<2>() {
             (pairs, [_]) => 3 * pairs.len() + 1,
             (pairs @ [.., last_pair], []) => {
                 3 * pairs.len() - (u16::from_be_bytes(*last_pair).trailing_zeros() / 5) as usize
             }
             _ => return vec![],
         };
-        let mut aminos = vec![Amino::default(); len];
-        unpack(&mut aminos, &packed_aminos.0);
-        aminos
+        let mut peptide = vec![Amino::default(); len];
+        unpack(&mut peptide, &packed_peptide.0);
+        peptide
     }
 }
 
@@ -80,8 +80,8 @@ impl<const N: usize> From<[Amino; N]> for PackedArrayPeptide<N>
 where
     [(); N]: ArrayDivide,
 {
-    fn from(aminos: [Amino; N]) -> PackedArrayPeptide<N> {
-        (&aminos).into()
+    fn from(peptide: [Amino; N]) -> PackedArrayPeptide<N> {
+        (&peptide).into()
     }
 }
 
@@ -89,9 +89,9 @@ impl<const N: usize> From<&[Amino; N]> for PackedArrayPeptide<N>
 where
     [(); N]: ArrayDivide,
 {
-    fn from(aminos: &[Amino; N]) -> PackedArrayPeptide<N> {
+    fn from(peptide: &[Amino; N]) -> PackedArrayPeptide<N> {
         let mut this = Self(ArrayDefault::array_default());
-        pack(this.0.as_mut(), aminos);
+        pack(this.0.as_mut(), peptide);
         this
     }
 }
@@ -100,8 +100,8 @@ impl<const N: usize> From<PackedArrayPeptide<N>> for [Amino; N]
 where
     [(); N]: ArrayDivide,
 {
-    fn from(packed_aminos: PackedArrayPeptide<N>) -> [Amino; N] {
-        (&packed_aminos).into()
+    fn from(packed_peptide: PackedArrayPeptide<N>) -> [Amino; N] {
+        (&packed_peptide).into()
     }
 }
 
@@ -109,20 +109,20 @@ impl<const N: usize> From<&PackedArrayPeptide<N>> for [Amino; N]
 where
     [(); N]: ArrayDivide,
 {
-    fn from(packed_aminos: &PackedArrayPeptide<N>) -> [Amino; N] {
-        let mut aminos = [Amino::default(); N];
-        unpack(&mut aminos, packed_aminos.0.as_ref());
-        aminos
+    fn from(packed_peptide: &PackedArrayPeptide<N>) -> [Amino; N] {
+        let mut peptide = [Amino::default(); N];
+        unpack(&mut peptide, packed_peptide.0.as_ref());
+        peptide
     }
 }
 
-fn pack(packed: &mut [u8], aminos: &[Amino]) {
+fn pack(packed: &mut [u8], peptide: &[Amino]) {
     let (pairs, packed_remainder) = packed.as_chunks_mut();
-    let (triplets, amino_remainder) = aminos.as_chunks();
+    let (triplets, peptide_remainder) = peptide.as_chunks();
     for (pair, &[a1, a2, a3]) in pairs.iter_mut().zip(triplets) {
         *pair = (a3.compress() | (a2.compress() << 5) | (a1.compress() << 10)).to_be_bytes();
     }
-    match (packed_remainder, amino_remainder) {
+    match (packed_remainder, peptide_remainder) {
         ([], []) => {}
         ([b1], &[a1]) => [*b1, _] = (a1.compress() << 10).to_be_bytes(),
         ([], &[a1, a2]) => {
@@ -133,16 +133,16 @@ fn pack(packed: &mut [u8], aminos: &[Amino]) {
     }
 }
 
-fn unpack(aminos: &mut [Amino], packed: &[u8]) {
+fn unpack(peptide: &mut [Amino], packed: &[u8]) {
     let (pairs, packed_remainder) = packed.as_chunks();
-    let (triplets, amino_remainder) = aminos.as_chunks_mut();
+    let (triplets, peptide_remainder) = peptide.as_chunks_mut();
     for ([a1, a2, a3], &pair) in triplets.iter_mut().zip(pairs) {
         let val = u16::from_be_bytes(pair);
         *a1 = Amino::decompress(val >> 10);
         *a2 = Amino::decompress(val >> 5);
         *a3 = Amino::decompress(val);
     }
-    match (amino_remainder, packed_remainder) {
+    match (peptide_remainder, packed_remainder) {
         ([], []) => {}
         ([a1], &[b1]) => {
             *a1 = Amino::decompress(u16::from_be_bytes([b1, 0]) >> 10);

@@ -23,27 +23,27 @@ use super::{ArrayDefault, ArrayDivide};
 pub struct PackedAmbiDna(Vec<u8>);
 
 impl From<&[AmbiNuc]> for PackedAmbiDna {
-    fn from(ambi_nucs: &[AmbiNuc]) -> PackedAmbiDna {
-        let packed_len = ambi_nucs.len().div_ceil(2);
+    fn from(ambi_dna: &[AmbiNuc]) -> PackedAmbiDna {
+        let packed_len = ambi_dna.len().div_ceil(2);
         let mut packed = vec![0; packed_len];
-        pack(&mut packed, ambi_nucs);
+        pack(&mut packed, ambi_dna);
         Self(packed)
     }
 }
 
 impl From<PackedAmbiDna> for Vec<AmbiNuc> {
-    fn from(packed_ambi_nucs: PackedAmbiDna) -> Vec<AmbiNuc> {
-        (&packed_ambi_nucs).into()
+    fn from(packed_ambi_dna: PackedAmbiDna) -> Vec<AmbiNuc> {
+        (&packed_ambi_dna).into()
     }
 }
 
 impl From<&PackedAmbiDna> for Vec<AmbiNuc> {
-    fn from(packed_ambi_nucs: &PackedAmbiDna) -> Vec<AmbiNuc> {
-        if let Some(byte) = packed_ambi_nucs.0.last() {
-            let len = 2 * packed_ambi_nucs.0.len() - usize::from(byte.trailing_zeros() >= 4);
-            let mut ambi_nucs = vec![AmbiNuc::default(); len];
-            unpack(&mut ambi_nucs, &packed_ambi_nucs.0);
-            ambi_nucs
+    fn from(packed_ambi_dna: &PackedAmbiDna) -> Vec<AmbiNuc> {
+        if let Some(byte) = packed_ambi_dna.0.last() {
+            let len = 2 * packed_ambi_dna.0.len() - usize::from(byte.trailing_zeros() >= 4);
+            let mut ambi_dna = vec![AmbiNuc::default(); len];
+            unpack(&mut ambi_dna, &packed_ambi_dna.0);
+            ambi_dna
         } else {
             vec![]
         }
@@ -73,8 +73,8 @@ impl<const N: usize> From<[AmbiNuc; N]> for PackedArrayAmbiDna<N>
 where
     [(); N]: ArrayDivide,
 {
-    fn from(ambi_nucs: [AmbiNuc; N]) -> PackedArrayAmbiDna<N> {
-        (&ambi_nucs).into()
+    fn from(ambi_dna: [AmbiNuc; N]) -> PackedArrayAmbiDna<N> {
+        (&ambi_dna).into()
     }
 }
 
@@ -82,9 +82,9 @@ impl<const N: usize> From<&[AmbiNuc; N]> for PackedArrayAmbiDna<N>
 where
     [(); N]: ArrayDivide,
 {
-    fn from(ambi_nucs: &[AmbiNuc; N]) -> PackedArrayAmbiDna<N> {
+    fn from(ambi_dna: &[AmbiNuc; N]) -> PackedArrayAmbiDna<N> {
         let mut this = Self(ArrayDefault::array_default());
-        pack(this.0.as_mut(), ambi_nucs);
+        pack(this.0.as_mut(), ambi_dna);
         this
     }
 }
@@ -93,8 +93,8 @@ impl<const N: usize> From<PackedArrayAmbiDna<N>> for [AmbiNuc; N]
 where
     [(); N]: ArrayDivide,
 {
-    fn from(packed_ambi_nucs: PackedArrayAmbiDna<N>) -> [AmbiNuc; N] {
-        (&packed_ambi_nucs).into()
+    fn from(packed_ambi_dna: PackedArrayAmbiDna<N>) -> [AmbiNuc; N] {
+        (&packed_ambi_dna).into()
     }
 }
 
@@ -102,15 +102,15 @@ impl<const N: usize> From<&PackedArrayAmbiDna<N>> for [AmbiNuc; N]
 where
     [(); N]: ArrayDivide,
 {
-    fn from(packed_ambi_nucs: &PackedArrayAmbiDna<N>) -> [AmbiNuc; N] {
-        let mut ambi_nucs = [AmbiNuc::default(); N];
-        unpack(&mut ambi_nucs, packed_ambi_nucs.0.as_ref());
-        ambi_nucs
+    fn from(packed_ambi_dna: &PackedArrayAmbiDna<N>) -> [AmbiNuc; N] {
+        let mut ambi_dna = [AmbiNuc::default(); N];
+        unpack(&mut ambi_dna, packed_ambi_dna.0.as_ref());
+        ambi_dna
     }
 }
 
-fn pack(packed: &mut [u8], ambi_nucs: &[AmbiNuc]) {
-    let (pairs, remainder) = ambi_nucs.as_chunks();
+fn pack(packed: &mut [u8], ambi_dna: &[AmbiNuc]) {
+    let (pairs, remainder) = ambi_dna.as_chunks();
     for (byte, &[n1, n2]) in packed.iter_mut().zip(pairs) {
         *byte = n2.compress() | (n1.compress() << 4);
     }
@@ -121,8 +121,8 @@ fn pack(packed: &mut [u8], ambi_nucs: &[AmbiNuc]) {
     }
 }
 
-fn unpack(ambi_nucs: &mut [AmbiNuc], packed: &[u8]) {
-    let (pairs, remainder) = ambi_nucs.as_chunks_mut();
+fn unpack(ambi_dna: &mut [AmbiNuc], packed: &[u8]) {
+    let (pairs, remainder) = ambi_dna.as_chunks_mut();
     for ([n1, n2], &byte) in pairs.iter_mut().zip(packed) {
         *n1 = AmbiNuc::decompress(byte >> 4);
         *n2 = AmbiNuc::decompress(byte);
