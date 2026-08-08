@@ -143,6 +143,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
     #[test]
     fn all_short_roundtrips() {
         // Yes, this is hideously ugly, but arrays need a size known at compile-time,
