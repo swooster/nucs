@@ -167,6 +167,21 @@ impl Nuc {
     pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Nuc; N]> {
         Seq(Self::arr(literal))
     }
+
+    /// Compress to value in range `0..=3`
+    pub(crate) fn compress(self) -> u8 {
+        match self {
+            Nuc::A => 0,
+            Nuc::C => 1,
+            Nuc::G => 2,
+            Nuc::T => 3,
+        }
+    }
+
+    /// Opposite of `compress`; ignores anything beyond the 2 least-significant bits.
+    pub(crate) fn decompress(compressed: u8) -> Self {
+        [Nuc::A, Nuc::C, Nuc::G, Nuc::T][(compressed & 0b11) as usize]
+    }
 }
 
 impl Display for Nuc {
@@ -534,6 +549,16 @@ impl AmbiNuc {
             }};
         }
         from_u8!(byte, A C M G R S V T W Y H K D B N)
+    }
+
+    /// Compress to value in `1..=15`.
+    pub(crate) fn compress(self) -> u8 {
+        self as _
+    }
+
+    /// Opposite of `compress`; ignores anything beyond the 4 least-significant bits.
+    pub(crate) fn decompress(compressed: u8) -> Self {
+        Self::from_u8(compressed & 0b1111).unwrap()
     }
 }
 
@@ -992,5 +1017,19 @@ mod tests {
         let mut sorted = AmbiNuc::ALL;
         sorted.sort();
         assert_eq!(AmbiNuc::ALL, sorted);
+    }
+
+    #[test]
+    fn nuc_compression_roundtrips() {
+        for nuc in Nuc::ALL {
+            assert_eq!(Nuc::decompress(nuc.compress()), nuc);
+        }
+    }
+
+    #[test]
+    fn ambi_nuc_compression_roundtrips() {
+        for nuc in AmbiNuc::ALL {
+            assert_eq!(AmbiNuc::decompress(nuc.compress()), nuc);
+        }
     }
 }

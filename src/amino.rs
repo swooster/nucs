@@ -231,6 +231,42 @@ impl Amino {
     pub const fn seq<const N: usize>(literal: &[u8; N]) -> Seq<[Amino; N]> {
         Seq(Self::arr(literal))
     }
+
+    /// Compress to value in `1..=23`.
+    pub(crate) fn compress(self) -> u16 {
+        match self {
+            Amino::Stop => 1,
+            Amino::A => 2,
+            Amino::C => 3,
+            Amino::D => 4,
+            Amino::E => 5,
+            Amino::F => 6,
+            Amino::G => 7,
+            Amino::H => 8,
+            Amino::I => 9,
+            Amino::K => 10,
+            Amino::L => 11,
+            Amino::M => 12,
+            Amino::N => 13,
+            Amino::O => 14,
+            Amino::P => 15,
+            Amino::Q => 16,
+            Amino::R => 17,
+            Amino::S => 18,
+            Amino::T => 19,
+            Amino::U => 20,
+            Amino::V => 21,
+            Amino::W => 22,
+            Amino::Y => 23,
+        }
+    }
+
+    /// Opposite of `compress`; ignores anything beyond the 5 least-significant bits.
+    pub(crate) fn decompress(compressed: u16) -> Self {
+        // So close to Amino::ALL :/ But trying to avoid the -1...
+        const AMINOS: [Amino; 24] = Amino::arr(b"**ACDEFGHIKLMNOPQRSTUVWY");
+        AMINOS[(compressed & 0b11111) as usize]
+    }
 }
 
 impl Display for Amino {
@@ -613,6 +649,26 @@ impl AmbiAmino {
 
     pub(crate) const fn bit_mask(amino: Amino) -> u32 {
         1 << Self::bit_offset(amino)
+    }
+
+    // The bit layout of all valid AmbiAminos:
+    // 000000x0 xxxxxxxx xxxxxxxx xxxxx0x1
+    //          <--------21 bits------>
+    // These two functions try to keep the order of the bits the same so that the
+    // resulting [u8; 3] is ordered the same as AmbiAmino.
+
+    pub(crate) fn compress(self) -> [u8; 3] {
+        let bits = self.0.get();
+        let bits = ((bits & 0x2) >> 1) | ((bits & 0x00FF_FFF8) >> 2) | ((bits & 0x0200_0000) >> 3);
+        let [_, b2, b3, b4] = bits.to_be_bytes();
+        [b2, b3, b4]
+    }
+
+    pub(crate) fn decompress(compressed: [u8; 3]) -> Self {
+        let [b2, b3, b4] = compressed;
+        let bits = u32::from_be_bytes([0, b2, b3, b4]);
+        let bits = ((bits << 1) & 0x2) | ((bits << 2) & 0x00FF_FFF8) | ((bits << 3) & 0x0200_0000);
+        Self(NonZeroU32::MIN | bits)
     }
 }
 
@@ -1090,5 +1146,20 @@ mod tests {
         concrete_ambi_aminos.sort();
         expected.sort();
         assert_eq!(concrete_ambi_aminos, expected);
+    }
+
+    #[test]
+    fn amino_compression_roundtrips() {
+        for aa in Amino::ALL {
+            assert_eq!(Amino::decompress(aa.compress()), aa);
+        }
+    }
+
+    #[cfg_attr(debug_assertions, ignore = "slow outside of release mode")]
+    #[test]
+    fn ambi_amino_compression_roundtrips() {
+        for aa in all_ambi_aminos() {
+            assert_eq!(AmbiAmino::decompress(aa.compress()), aa);
+        }
     }
 }

@@ -137,6 +137,7 @@ mod symbol;
 pub mod casts;
 pub mod error;
 pub mod iter;
+pub mod packed;
 #[cfg(any(feature = "proptest", test))]
 #[cfg_attr(docsrs, doc(cfg(feature = "proptest")))]
 pub mod proptest;
@@ -148,6 +149,7 @@ pub mod translation;
 pub use amino::{AmbiAmino, Amino};
 pub use iter::DnaIterExt;
 pub use nuc::{AmbiNuc, Nuc, Nucleotide};
+pub use packed::Packed;
 pub use seq::Seq;
 pub use slice::DnaSliceExt;
 pub use symbol::Symbol;

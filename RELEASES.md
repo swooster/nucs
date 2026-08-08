@@ -3,6 +3,7 @@
 ## Unreleased
 
 * `Seq` now has `complement` and `reverse_complement` methods. (#61)
+* Add basic support for packed types! (#62)
 
 ## Version 0.4.0 (2026-07-28)
 
