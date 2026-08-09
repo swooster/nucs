@@ -1,6 +1,7 @@
 use crate::Nuc;
 
-use super::{ArrayDefault, ArrayDivide};
+use super::PackableArray;
+use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 
 // Note on storage: Nucs are packed big-endian. Sadly, this encoding DOES NOT maintain lexical
 // ordering, due to the suffix (see below).
@@ -80,11 +81,11 @@ impl From<&PackedDna> for Vec<Nuc> {
 #[derive(Clone, Copy)]
 pub struct PackedArrayDna<const N: usize>(<[(); N] as ArrayDivide>::By4<u8>)
 where
-    [(); N]: ArrayDivide;
+    [(); N]: PackableArray;
 
 impl<const N: usize> From<[Nuc; N]> for PackedArrayDna<N>
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(dna: [Nuc; N]) -> PackedArrayDna<N> {
         (&dna).into()
@@ -93,7 +94,7 @@ where
 
 impl<const N: usize> From<&[Nuc; N]> for PackedArrayDna<N>
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(dna: &[Nuc; N]) -> PackedArrayDna<N> {
         let mut this = Self(ArrayDefault::array_default());
@@ -104,7 +105,7 @@ where
 
 impl<const N: usize> From<PackedArrayDna<N>> for [Nuc; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(packed_dna: PackedArrayDna<N>) -> [Nuc; N] {
         (&packed_dna).into()
@@ -113,7 +114,7 @@ where
 
 impl<const N: usize> From<&PackedArrayDna<N>> for [Nuc; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(packed_dna: &PackedArrayDna<N>) -> [Nuc; N] {
         let mut dna = [Nuc::default(); N];

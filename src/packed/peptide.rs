@@ -1,6 +1,7 @@
 use crate::Amino;
 
-use super::{ArrayDefault, ArrayDivide};
+use super::PackableArray;
+use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 
 // Note on storage: Aminos are packed big-endian so naive lexical sorting of bytes is correct.
 // The [u8; 2] themselves are big-endian u16s, for the same reason.
@@ -74,11 +75,11 @@ impl From<&PackedPeptide> for Vec<Amino> {
 #[derive(Clone, Copy)]
 pub struct PackedArrayPeptide<const N: usize>(<[(); N] as ArrayDivide>::By3_2<u8>)
 where
-    [(); N]: ArrayDivide;
+    [(); N]: PackableArray;
 
 impl<const N: usize> From<[Amino; N]> for PackedArrayPeptide<N>
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(peptide: [Amino; N]) -> PackedArrayPeptide<N> {
         (&peptide).into()
@@ -87,7 +88,7 @@ where
 
 impl<const N: usize> From<&[Amino; N]> for PackedArrayPeptide<N>
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(peptide: &[Amino; N]) -> PackedArrayPeptide<N> {
         let mut this = Self(ArrayDefault::array_default());
@@ -98,7 +99,7 @@ where
 
 impl<const N: usize> From<PackedArrayPeptide<N>> for [Amino; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(packed_peptide: PackedArrayPeptide<N>) -> [Amino; N] {
         (&packed_peptide).into()
@@ -107,7 +108,7 @@ where
 
 impl<const N: usize> From<&PackedArrayPeptide<N>> for [Amino; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(packed_peptide: &PackedArrayPeptide<N>) -> [Amino; N] {
         let mut peptide = [Amino::default(); N];

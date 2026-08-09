@@ -39,7 +39,7 @@ impl Packable for [Nuc] {
 
 impl<const N: usize> Packable for [Nuc; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     type Packed = PackedArrayDna<N>;
 }
@@ -50,7 +50,7 @@ impl Packable for [AmbiNuc] {
 
 impl<const N: usize> Packable for [AmbiNuc; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     type Packed = PackedArrayAmbiDna<N>;
 }
@@ -61,7 +61,7 @@ impl Packable for [Amino] {
 
 impl<const N: usize> Packable for [Amino; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     type Packed = PackedArrayPeptide<N>;
 }
@@ -74,45 +74,47 @@ impl<const N: usize> Packable for [AmbiAmino; N] {
     type Packed = PackedArrayAmbiPeptide<N>;
 }
 
-/// Utility trait used to work out packed array sizes at compile-time.
-///
-/// The API/details of this are intended for internal use and are therefore unstable.
-pub trait ArrayDivide {
-    // `ArrayDivide` uses GATs rather than constants to work around limitations in the current
-    // trait solver: A type/trait can't declare an array with a length obtained from a trait's
-    // associated constant.
-    //
-    // In theory, we could use non-generic associated types by setting them to something like
-    // `[(); N]` and matching a const generic parameter against them, but that ends up introducing
-    // additional generic parameters into types, and more implementation-specific trait constraints
-    // into everything else, so it'd make the public API horribly complicated.
+/// An array for which packed sizes are known.
+pub trait PackableArray: packable_array::Sealed {}
 
-    /// `[T; (2 * self.len()).div_ceil(3)]`
-    type By3_2<T: Copy + Default>: AsRef<[T]> + AsMut<[T]> + Copy + ArrayDefault;
-    /// `[T; self.len().div_ceil(2)]`
-    type By2<T: Copy + Default>: AsRef<[T]> + AsMut<[T]> + Copy + ArrayDefault;
-    /// `[T; self.len().div_ceil(4)]`
-    type By4<T: Copy + Default>: AsRef<[T]> + AsMut<[T]> + Copy + ArrayDefault;
-}
+pub(crate) mod packable_array {
+    /// Implementation details of [`PackedArray`].
+    ///
+    /// This uses GATs rather than constants to work around limitations in the current
+    /// trait solver: A type/trait can't declare an array with a length obtained from a
+    /// trait's associated constant.
+    ///
+    /// In theory, we could use non-generic associated types by setting them to something
+    /// like `[(); N]` and matching a const generic parameter against them, but that ends up
+    /// introducing additional generic parameters into types, and more implementation-specific
+    /// trait constraints into everything else, complicating the public APIs.
+    pub trait Sealed {
+        /// `[T; (2 * N).div_ceil(3)]`
+        type By3_2<T: Copy + Default>: AsRef<[T]> + AsMut<[T]> + Copy + ArrayDefault;
+        /// `[T; N.div_ceil(2)]`
+        type By2<T: Copy + Default>: AsRef<[T]> + AsMut<[T]> + Copy + ArrayDefault;
+        /// `[T; N.div_ceil(4)]`
+        type By4<T: Copy + Default>: AsRef<[T]> + AsMut<[T]> + Copy + ArrayDefault;
+    }
 
-/// Workaround for `[T; N]: Default` being limited to `N <= 32`
-///
-/// This is intended more as an internal implementation detail.
-pub trait ArrayDefault {
-    /// [`[T; N]::default`](Default#impl-Default-for-[T;+32]), but extended to any `N`.
-    fn array_default() -> Self;
-}
+    /// Workaround for `[T; N]: Default` being limited to `N <= 32`.
+    pub trait ArrayDefault {
+        fn array_default() -> Self;
+    }
 
-impl<T: Default, const N: usize> ArrayDefault for [T; N] {
-    fn array_default() -> Self {
-        std::array::from_fn(|_| T::default())
+    impl<T: Default, const N: usize> ArrayDefault for [T; N] {
+        fn array_default() -> Self {
+            std::array::from_fn(|_| T::default())
+        }
     }
 }
 
 macro_rules! div_table {
     ( $( $d:literal => $q3_2:literal $q2:literal $q4:literal),+ , ) => {
         $(
-            impl ArrayDivide for [(); $d] {
+            impl PackableArray for [(); $d] {}
+
+            impl packable_array::Sealed for [(); $d] {
                 type By3_2<T: Copy + Default> = [T; $q3_2];
                 type By2<T: Copy + Default> = [T; $q2];
                 type By4<T: Copy + Default> = [T; $q4];
