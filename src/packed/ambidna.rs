@@ -1,6 +1,7 @@
 use crate::AmbiNuc;
 
-use super::{ArrayDefault, ArrayDivide};
+use super::PackableArray;
+use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 
 // Note on storage: AmbiNucs are packed big-endian so naive lexical sorting of bytes is correct.
 //
@@ -67,11 +68,11 @@ impl From<&PackedAmbiDna> for Vec<AmbiNuc> {
 #[derive(Clone, Copy)]
 pub struct PackedArrayAmbiDna<const N: usize>(<[(); N] as ArrayDivide>::By2<u8>)
 where
-    [(); N]: ArrayDivide;
+    [(); N]: PackableArray;
 
 impl<const N: usize> From<[AmbiNuc; N]> for PackedArrayAmbiDna<N>
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(ambi_dna: [AmbiNuc; N]) -> PackedArrayAmbiDna<N> {
         (&ambi_dna).into()
@@ -80,7 +81,7 @@ where
 
 impl<const N: usize> From<&[AmbiNuc; N]> for PackedArrayAmbiDna<N>
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(ambi_dna: &[AmbiNuc; N]) -> PackedArrayAmbiDna<N> {
         let mut this = Self(ArrayDefault::array_default());
@@ -91,7 +92,7 @@ where
 
 impl<const N: usize> From<PackedArrayAmbiDna<N>> for [AmbiNuc; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(packed_ambi_dna: PackedArrayAmbiDna<N>) -> [AmbiNuc; N] {
         (&packed_ambi_dna).into()
@@ -100,7 +101,7 @@ where
 
 impl<const N: usize> From<&PackedArrayAmbiDna<N>> for [AmbiNuc; N]
 where
-    [(); N]: ArrayDivide,
+    [(); N]: PackableArray,
 {
     fn from(packed_ambi_dna: &PackedArrayAmbiDna<N>) -> [AmbiNuc; N] {
         let mut ambi_dna = [AmbiNuc::default(); N];
