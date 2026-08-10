@@ -1,4 +1,4 @@
-use crate::AmbiNuc;
+use crate::{AmbiNuc, Seq};
 
 use super::PackableArray;
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
@@ -23,12 +23,37 @@ use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 #[derive(Clone)]
 pub struct PackedAmbiDna(Vec<u8>);
 
-impl From<&[AmbiNuc]> for PackedAmbiDna {
-    fn from(ambi_dna: &[AmbiNuc]) -> PackedAmbiDna {
+impl From<Seq<Vec<AmbiNuc>>> for PackedAmbiDna {
+    fn from(ambi_dna: Seq<Vec<AmbiNuc>>) -> PackedAmbiDna {
+        ambi_dna.0.into()
+    }
+}
+
+impl From<Vec<AmbiNuc>> for PackedAmbiDna {
+    fn from(ambi_dna: Vec<AmbiNuc>) -> PackedAmbiDna {
+        (&ambi_dna).into()
+    }
+}
+
+impl<T: AsRef<[AmbiNuc]> + ?Sized> From<&T> for PackedAmbiDna {
+    fn from(ambi_dna: &T) -> PackedAmbiDna {
+        let ambi_dna = ambi_dna.as_ref();
         let packed_len = ambi_dna.len().div_ceil(2);
         let mut packed = vec![0; packed_len];
         pack(&mut packed, ambi_dna);
         Self(packed)
+    }
+}
+
+impl From<PackedAmbiDna> for Seq<Vec<AmbiNuc>> {
+    fn from(packed_ambi_dna: PackedAmbiDna) -> Seq<Vec<AmbiNuc>> {
+        Seq(packed_ambi_dna.into())
+    }
+}
+
+impl From<&PackedAmbiDna> for Seq<Vec<AmbiNuc>> {
+    fn from(packed_ambi_dna: &PackedAmbiDna) -> Seq<Vec<AmbiNuc>> {
+        Seq(packed_ambi_dna.into())
     }
 }
 
@@ -70,6 +95,24 @@ pub struct PackedArrayAmbiDna<const N: usize>(<[(); N] as ArrayDivide>::By2<u8>)
 where
     [(); N]: PackableArray;
 
+impl<const N: usize> From<Seq<[AmbiNuc; N]>> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn from(ambi_dna: Seq<[AmbiNuc; N]>) -> PackedArrayAmbiDna<N> {
+        ambi_dna.0.into()
+    }
+}
+
+impl<const N: usize> From<&Seq<[AmbiNuc; N]>> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn from(ambi_dna: &Seq<[AmbiNuc; N]>) -> PackedArrayAmbiDna<N> {
+        ambi_dna.0.into()
+    }
+}
+
 impl<const N: usize> From<[AmbiNuc; N]> for PackedArrayAmbiDna<N>
 where
     [(); N]: PackableArray,
@@ -87,6 +130,24 @@ where
         let mut this = Self(ArrayDefault::array_default());
         pack(this.0.as_mut(), ambi_dna);
         this
+    }
+}
+
+impl<const N: usize> From<PackedArrayAmbiDna<N>> for Seq<[AmbiNuc; N]>
+where
+    [(); N]: PackableArray,
+{
+    fn from(packed_ambi_dna: PackedArrayAmbiDna<N>) -> Seq<[AmbiNuc; N]> {
+        Seq(packed_ambi_dna.into())
+    }
+}
+
+impl<const N: usize> From<&PackedArrayAmbiDna<N>> for Seq<[AmbiNuc; N]>
+where
+    [(); N]: PackableArray,
+{
+    fn from(packed_ambi_dna: &PackedArrayAmbiDna<N>) -> Seq<[AmbiNuc; N]> {
+        Seq(packed_ambi_dna.into())
     }
 }
 

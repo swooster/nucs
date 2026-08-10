@@ -37,6 +37,10 @@ impl Packable for [Nuc] {
     type Packed = PackedDna;
 }
 
+impl Packable for Vec<Nuc> {
+    type Packed = PackedDna;
+}
+
 impl<const N: usize> Packable for [Nuc; N]
 where
     [(); N]: PackableArray,
@@ -45,6 +49,10 @@ where
 }
 
 impl Packable for [AmbiNuc] {
+    type Packed = PackedAmbiDna;
+}
+
+impl Packable for Vec<AmbiNuc> {
     type Packed = PackedAmbiDna;
 }
 
@@ -59,6 +67,10 @@ impl Packable for [Amino] {
     type Packed = PackedPeptide;
 }
 
+impl Packable for Vec<Amino> {
+    type Packed = PackedPeptide;
+}
+
 impl<const N: usize> Packable for [Amino; N]
 where
     [(); N]: PackableArray,
@@ -67,6 +79,10 @@ where
 }
 
 impl Packable for [AmbiAmino] {
+    type Packed = PackedAmbiPeptide;
+}
+
+impl Packable for Vec<AmbiAmino> {
     type Packed = PackedAmbiPeptide;
 }
 

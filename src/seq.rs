@@ -8,6 +8,7 @@ use ref_cast::{RefCastCustom, ref_cast_custom};
 
 use crate::error::ParseSeqError;
 use crate::iter::{Codons, Translated};
+use crate::packed::Packable;
 use crate::symbol::iter_symbols;
 use crate::translation::{GeneticCode, Translation};
 use crate::{DnaIterExt, DnaSliceExt, Nucleotide, Symbol};
@@ -239,6 +240,27 @@ impl<T: ?Sized> Seq<T> {
         [S]: DnaSliceExt,
     {
         self.0.as_mut().reverse_complement();
+    }
+
+    /// Return bit-packed copy of sequence.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::{Nuc, Seq};
+    ///
+    /// let dna = Nuc::seq(b"CATATTAC");
+    /// assert_eq!(size_of_val(&dna), 8);
+    /// let packed = dna.pack();
+    /// assert_eq!(size_of_val(&packed), 2);
+    /// let dna = Seq::from(packed);
+    /// assert_eq!(size_of_val(&dna), 8);
+    /// ```
+    pub fn pack(&self) -> T::Packed
+    where
+        T: Packable,
+    {
+        self.0.into()
     }
 }
 
@@ -499,7 +521,7 @@ mod serde_tests {
 mod tests {
     use std::collections::VecDeque;
 
-    use crate::{Dna, NCBI1, Nuc, Seq};
+    use crate::{AmbiAmino, AmbiNuc, Amino, Dna, NCBI1, Nuc, Seq};
 
     #[test]
     fn sanity_check_that_seq_works_with_arrays() {
@@ -545,5 +567,62 @@ mod tests {
         assert_eq!(peptide, "T");
         dna[2] = Nuc::A;
         assert_eq!(dna, "ACAT");
+    }
+
+    #[test]
+    fn sanity_check_slice_packing() {
+        let packed_dna = Nuc::seq(b"ACGT")[..].pack();
+        assert_eq!(Seq::from(packed_dna), "ACGT");
+
+        let packed_ambi_dna = AmbiNuc::seq(b"AMBACGT")[..].pack();
+        assert_eq!(Seq::from(packed_ambi_dna), "AMBACGT");
+
+        let packed_peptide = Amino::seq(b"PEPTIDE")[..].pack();
+        assert_eq!(Seq::from(packed_peptide), "PEPTIDE");
+
+        let packed_ambi_peptide = AmbiAmino::seq(b"AMBIPEPTIDE")[..].pack();
+        assert_eq!(Seq::from(packed_ambi_peptide), "AMBIPEPTIDE");
+    }
+
+    #[test]
+    fn sanity_check_vec_packing() {
+        let packed_dna = Seq(Nuc::arr(b"ACGT").to_vec()).pack();
+        assert_eq!(Seq::from(packed_dna), "ACGT");
+
+        let packed_ambi_dna = Seq(AmbiNuc::arr(b"AMBACGT").to_vec()).pack();
+        assert_eq!(Seq::from(packed_ambi_dna), "AMBACGT");
+
+        let packed_peptide = Seq(Amino::arr(b"PEPTIDE").to_vec()).pack();
+        assert_eq!(Seq::from(packed_peptide), "PEPTIDE");
+
+        let packed_ambi_peptide = Seq(AmbiAmino::arr(b"AMBIPEPTIDE").to_vec()).pack();
+        assert_eq!(Seq::from(packed_ambi_peptide), "AMBIPEPTIDE");
+    }
+
+    #[test]
+    fn sanity_check_array_packing() {
+        let packed_dna = Nuc::seq(b"ACGT").pack();
+        assert_eq!(size_of_val(&packed_dna), 1);
+        let unpacked_dna = Seq::from(packed_dna);
+        assert_eq!(size_of_val(&unpacked_dna), 4);
+        assert_eq!(unpacked_dna, "ACGT");
+
+        let packed_ambi_dna = AmbiNuc::seq(b"AMBACGT").pack();
+        assert_eq!(size_of_val(&packed_ambi_dna), 4);
+        let unpacked_ambi_dna = Seq::from(packed_ambi_dna);
+        assert_eq!(size_of_val(&unpacked_ambi_dna), 7);
+        assert_eq!(unpacked_ambi_dna, "AMBACGT");
+
+        let packed_peptide = Amino::seq(b"PEPTIDE").pack();
+        assert_eq!(size_of_val(&packed_peptide), 5);
+        let unpacked_peptide = Seq::from(packed_peptide);
+        assert_eq!(size_of_val(&unpacked_peptide), 7);
+        assert_eq!(unpacked_peptide, "PEPTIDE");
+
+        let packed_ambi_peptide = AmbiAmino::seq(b"AMBIPEPTIDE").pack();
+        assert_eq!(size_of_val(&packed_ambi_peptide), 33);
+        let unpacked_ambi_peptide = Seq::from(packed_ambi_peptide);
+        assert_eq!(size_of_val(&unpacked_ambi_peptide), 44);
+        assert_eq!(unpacked_ambi_peptide, "AMBIPEPTIDE");
     }
 }
