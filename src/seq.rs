@@ -296,6 +296,18 @@ impl<S: Clone> ToOwned for Seq<[S]> {
     }
 }
 
+impl<T: AsRef<U>, U> AsRef<U> for Seq<T> {
+    fn as_ref(&self) -> &U {
+        self.0.as_ref()
+    }
+}
+
+impl<T: AsMut<U>, U> AsMut<U> for Seq<T> {
+    fn as_mut(&mut self) -> &mut U {
+        self.0.as_mut()
+    }
+}
+
 impl<T: FromIterator<A>, A> FromIterator<A> for Seq<T> {
     fn from_iter<U>(iter: U) -> Self
     where
