@@ -1,4 +1,4 @@
-use crate::Amino;
+use crate::{Amino, Seq};
 
 use super::PackableArray;
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
@@ -28,12 +28,37 @@ use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 #[derive(Clone)]
 pub struct PackedPeptide(Vec<u8>);
 
-impl From<&[Amino]> for PackedPeptide {
-    fn from(peptide: &[Amino]) -> PackedPeptide {
+impl From<Seq<Vec<Amino>>> for PackedPeptide {
+    fn from(peptide: Seq<Vec<Amino>>) -> PackedPeptide {
+        peptide.0.into()
+    }
+}
+
+impl From<Vec<Amino>> for PackedPeptide {
+    fn from(peptide: Vec<Amino>) -> PackedPeptide {
+        (&peptide).into()
+    }
+}
+
+impl<T: AsRef<[Amino]> + ?Sized> From<&T> for PackedPeptide {
+    fn from(peptide: &T) -> PackedPeptide {
+        let peptide = peptide.as_ref();
         let packed_len = (2 * peptide.len()).div_ceil(3);
         let mut packed = vec![0; packed_len];
         pack(&mut packed, peptide);
         Self(packed)
+    }
+}
+
+impl From<PackedPeptide> for Seq<Vec<Amino>> {
+    fn from(packed_peptide: PackedPeptide) -> Seq<Vec<Amino>> {
+        Seq(packed_peptide.into())
+    }
+}
+
+impl From<&PackedPeptide> for Seq<Vec<Amino>> {
+    fn from(packed_peptide: &PackedPeptide) -> Seq<Vec<Amino>> {
+        Seq(packed_peptide.into())
     }
 }
 
@@ -77,6 +102,24 @@ pub struct PackedArrayPeptide<const N: usize>(<[(); N] as ArrayDivide>::By3_2<u8
 where
     [(); N]: PackableArray;
 
+impl<const N: usize> From<Seq<[Amino; N]>> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn from(peptide: Seq<[Amino; N]>) -> PackedArrayPeptide<N> {
+        peptide.0.into()
+    }
+}
+
+impl<const N: usize> From<&Seq<[Amino; N]>> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn from(peptide: &Seq<[Amino; N]>) -> PackedArrayPeptide<N> {
+        peptide.0.into()
+    }
+}
+
 impl<const N: usize> From<[Amino; N]> for PackedArrayPeptide<N>
 where
     [(); N]: PackableArray,
@@ -94,6 +137,24 @@ where
         let mut this = Self(ArrayDefault::array_default());
         pack(this.0.as_mut(), peptide);
         this
+    }
+}
+
+impl<const N: usize> From<PackedArrayPeptide<N>> for Seq<[Amino; N]>
+where
+    [(); N]: PackableArray,
+{
+    fn from(packed_peptide: PackedArrayPeptide<N>) -> Seq<[Amino; N]> {
+        Seq(packed_peptide.into())
+    }
+}
+
+impl<const N: usize> From<&PackedArrayPeptide<N>> for Seq<[Amino; N]>
+where
+    [(); N]: PackableArray,
+{
+    fn from(packed_peptide: &PackedArrayPeptide<N>) -> Seq<[Amino; N]> {
+        Seq(packed_peptide.into())
     }
 }
 

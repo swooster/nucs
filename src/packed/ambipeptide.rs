@@ -1,4 +1,4 @@
-use crate::AmbiAmino;
+use crate::{AmbiAmino, Seq};
 
 // Note on storage: There's not much room for packing `AmbiAmino`s... we can shave off one byte,
 // but that's about it. Again, we store thing big-endian for lexical sorting reasons.
@@ -19,9 +19,34 @@ use crate::AmbiAmino;
 #[derive(Clone)]
 pub struct PackedAmbiPeptide(Vec<[u8; 3]>);
 
-impl From<&[AmbiAmino]> for PackedAmbiPeptide {
-    fn from(ambi_peptide: &[AmbiAmino]) -> PackedAmbiPeptide {
+impl From<Seq<Vec<AmbiAmino>>> for PackedAmbiPeptide {
+    fn from(ambi_peptide: Seq<Vec<AmbiAmino>>) -> PackedAmbiPeptide {
+        ambi_peptide.0.into()
+    }
+}
+
+impl From<Vec<AmbiAmino>> for PackedAmbiPeptide {
+    fn from(ambi_peptide: Vec<AmbiAmino>) -> PackedAmbiPeptide {
+        (&ambi_peptide).into()
+    }
+}
+
+impl<T: AsRef<[AmbiAmino]> + ?Sized> From<&T> for PackedAmbiPeptide {
+    fn from(ambi_peptide: &T) -> PackedAmbiPeptide {
+        let ambi_peptide = ambi_peptide.as_ref();
         Self(ambi_peptide.iter().map(|a| a.compress()).collect())
+    }
+}
+
+impl From<PackedAmbiPeptide> for Seq<Vec<AmbiAmino>> {
+    fn from(packed_ambi_peptide: PackedAmbiPeptide) -> Seq<Vec<AmbiAmino>> {
+        Seq(packed_ambi_peptide.into())
+    }
+}
+
+impl From<&PackedAmbiPeptide> for Seq<Vec<AmbiAmino>> {
+    fn from(packed_ambi_peptide: &PackedAmbiPeptide) -> Seq<Vec<AmbiAmino>> {
+        Seq(packed_ambi_peptide.into())
     }
 }
 
@@ -55,6 +80,18 @@ impl From<&PackedAmbiPeptide> for Vec<AmbiAmino> {
 #[derive(Clone, Copy)]
 pub struct PackedArrayAmbiPeptide<const N: usize>([[u8; 3]; N]);
 
+impl<const N: usize> From<Seq<[AmbiAmino; N]>> for PackedArrayAmbiPeptide<N> {
+    fn from(ambi_peptide: Seq<[AmbiAmino; N]>) -> PackedArrayAmbiPeptide<N> {
+        ambi_peptide.0.into()
+    }
+}
+
+impl<const N: usize> From<&Seq<[AmbiAmino; N]>> for PackedArrayAmbiPeptide<N> {
+    fn from(ambi_peptide: &Seq<[AmbiAmino; N]>) -> PackedArrayAmbiPeptide<N> {
+        ambi_peptide.0.into()
+    }
+}
+
 impl<const N: usize> From<[AmbiAmino; N]> for PackedArrayAmbiPeptide<N> {
     fn from(ambi_peptide: [AmbiAmino; N]) -> PackedArrayAmbiPeptide<N> {
         (&ambi_peptide).into()
@@ -64,6 +101,18 @@ impl<const N: usize> From<[AmbiAmino; N]> for PackedArrayAmbiPeptide<N> {
 impl<const N: usize> From<&[AmbiAmino; N]> for PackedArrayAmbiPeptide<N> {
     fn from(ambi_peptide: &[AmbiAmino; N]) -> PackedArrayAmbiPeptide<N> {
         Self(ambi_peptide.map(AmbiAmino::compress))
+    }
+}
+
+impl<const N: usize> From<PackedArrayAmbiPeptide<N>> for Seq<[AmbiAmino; N]> {
+    fn from(packed_ambi_peptide: PackedArrayAmbiPeptide<N>) -> Seq<[AmbiAmino; N]> {
+        Seq(packed_ambi_peptide.into())
+    }
+}
+
+impl<const N: usize> From<&PackedArrayAmbiPeptide<N>> for Seq<[AmbiAmino; N]> {
+    fn from(packed_ambi_peptide: &PackedArrayAmbiPeptide<N>) -> Seq<[AmbiAmino; N]> {
+        Seq(packed_ambi_peptide.into())
     }
 }
 

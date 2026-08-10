@@ -1,4 +1,4 @@
-use crate::Nuc;
+use crate::{Nuc, Seq};
 
 use super::PackableArray;
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
@@ -29,8 +29,21 @@ use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 #[derive(Clone)]
 pub struct PackedDna(Vec<u8>);
 
-impl From<&[Nuc]> for PackedDna {
-    fn from(dna: &[Nuc]) -> PackedDna {
+impl From<Seq<Vec<Nuc>>> for PackedDna {
+    fn from(dna: Seq<Vec<Nuc>>) -> PackedDna {
+        dna.0.into()
+    }
+}
+
+impl From<Vec<Nuc>> for PackedDna {
+    fn from(dna: Vec<Nuc>) -> PackedDna {
+        (&dna).into()
+    }
+}
+
+impl<T: AsRef<[Nuc]> + ?Sized> From<&T> for PackedDna {
+    fn from(dna: &T) -> PackedDna {
+        let dna = dna.as_ref();
         let packed_len = match dna.len() {
             0 => 0, // special-case to reduce allocs
             l => l / 4 + 1,
@@ -42,6 +55,18 @@ impl From<&[Nuc]> for PackedDna {
                 u8::try_from(dna.len() % 4).unwrap_or_else(|_| unreachable!("x % 4 fits in a u8"));
         }
         Self(packed)
+    }
+}
+
+impl From<PackedDna> for Seq<Vec<Nuc>> {
+    fn from(packed_dna: PackedDna) -> Seq<Vec<Nuc>> {
+        Seq(packed_dna.into())
+    }
+}
+
+impl From<&PackedDna> for Seq<Vec<Nuc>> {
+    fn from(packed_dna: &PackedDna) -> Seq<Vec<Nuc>> {
+        Seq(packed_dna.into())
     }
 }
 
@@ -83,6 +108,24 @@ pub struct PackedArrayDna<const N: usize>(<[(); N] as ArrayDivide>::By4<u8>)
 where
     [(); N]: PackableArray;
 
+impl<const N: usize> From<Seq<[Nuc; N]>> for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn from(dna: Seq<[Nuc; N]>) -> PackedArrayDna<N> {
+        dna.0.into()
+    }
+}
+
+impl<const N: usize> From<&Seq<[Nuc; N]>> for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn from(dna: &Seq<[Nuc; N]>) -> PackedArrayDna<N> {
+        dna.0.into()
+    }
+}
+
 impl<const N: usize> From<[Nuc; N]> for PackedArrayDna<N>
 where
     [(); N]: PackableArray,
@@ -100,6 +143,24 @@ where
         let mut this = Self(ArrayDefault::array_default());
         pack(this.0.as_mut(), dna);
         this
+    }
+}
+
+impl<const N: usize> From<PackedArrayDna<N>> for Seq<[Nuc; N]>
+where
+    [(); N]: PackableArray,
+{
+    fn from(packed_dna: PackedArrayDna<N>) -> Seq<[Nuc; N]> {
+        Seq(packed_dna.into())
+    }
+}
+
+impl<const N: usize> From<&PackedArrayDna<N>> for Seq<[Nuc; N]>
+where
+    [(); N]: PackableArray,
+{
+    fn from(packed_dna: &PackedArrayDna<N>) -> Seq<[Nuc; N]> {
+        Seq(packed_dna.into())
     }
 }
 
