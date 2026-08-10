@@ -296,13 +296,13 @@ impl<S: Clone> ToOwned for Seq<[S]> {
     }
 }
 
-impl<T: AsRef<U>, U> AsRef<U> for Seq<T> {
+impl<T: AsRef<U>, U: ?Sized> AsRef<U> for Seq<T> {
     fn as_ref(&self) -> &U {
         self.0.as_ref()
     }
 }
 
-impl<T: AsMut<U>, U> AsMut<U> for Seq<T> {
+impl<T: AsMut<U>, U: ?Sized> AsMut<U> for Seq<T> {
     fn as_mut(&mut self) -> &mut U {
         self.0.as_mut()
     }
