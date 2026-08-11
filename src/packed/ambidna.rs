@@ -23,6 +23,24 @@ use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 #[derive(Clone)]
 pub struct PackedAmbiDna(Vec<u8>);
 
+impl PackedAmbiDna {
+    /// Returns the number of [`AmbiNuc`]s in the packed DNA.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        // len <= `usize::MAX` is an invariant of this type, so no need to worry about overflow.
+        match &*self.0 {
+            [] => 0,
+            bulk @ [.., tail] => 2 * bulk.len() - (tail.trailing_zeros() / 4) as usize,
+        }
+    }
+
+    /// Returns `true` if the packed DNA contains no [`AmbiNuc`]s.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 impl From<Seq<Vec<AmbiNuc>>> for PackedAmbiDna {
     fn from(ambi_dna: Seq<Vec<AmbiNuc>>) -> PackedAmbiDna {
         ambi_dna.0.into()
@@ -259,6 +277,16 @@ mod tests {
             let packed1 = PackedAmbiDna::from(dna1.as_slice());
             let packed2 = PackedAmbiDna::from(dna2.as_slice());
             assert_eq!(packed1.0.cmp(&packed2.0), dna1.cmp(&dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_ambi_dna_length(
+            ambi_dna in any_ambi_dna(0..50)
+        ) {
+            let packed = PackedAmbiDna::from(&ambi_dna);
+            assert_eq!(packed.len(), ambi_dna.len());
+            assert_eq!(packed.is_empty(), ambi_dna.is_empty());
         }
     }
 }
