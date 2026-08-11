@@ -28,6 +28,28 @@ use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 #[derive(Clone)]
 pub struct PackedPeptide(Vec<u8>);
 
+impl PackedPeptide {
+    /// Returns the number of [`Amino`]s in the packed peptide.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        // len <= `usize::MAX` is an invariant of this type, so no need to worry about overflow.
+        match self.0.as_chunks() {
+            ([], []) => 0,
+            (bulk @ [.., last], []) => {
+                3 * bulk.len() - (u16::from_be_bytes(*last).trailing_zeros() / 5) as usize
+            }
+            (bulk, [_]) => 3 * bulk.len() + 1,
+            (_, [_, _, ..]) => unreachable!(),
+        }
+    }
+
+    /// Returns `true` if the packed peptide contains no [`Amino`]s.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 impl From<Seq<Vec<Amino>>> for PackedPeptide {
     fn from(peptide: Seq<Vec<Amino>>) -> PackedPeptide {
         peptide.0.into()
@@ -289,6 +311,16 @@ mod tests {
             let packed1 = PackedPeptide::from(peptide1.as_slice());
             let packed2 = PackedPeptide::from(peptide2.as_slice());
             assert_eq!(packed1.0.cmp(&packed2.0), peptide1.cmp(&peptide2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_peptide_length(
+            peptide in any_peptide(0..50)
+        ) {
+            let packed = PackedPeptide::from(&peptide);
+            assert_eq!(packed.len(), peptide.len());
+            assert_eq!(packed.is_empty(), peptide.is_empty());
         }
     }
 }

@@ -29,6 +29,24 @@ use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 #[derive(Clone)]
 pub struct PackedDna(Vec<u8>);
 
+impl PackedDna {
+    /// Returns the number of [`Nuc`]s in the packed DNA.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        // len <= `usize::MAX` is an invariant of this type, so no need to worry about overflow.
+        match &*self.0 {
+            [] => 0,
+            [bulk @ .., tail] => 4 * bulk.len() + (tail & 0b11) as usize,
+        }
+    }
+
+    /// Returns `true` if the packed DNA contains no [`Nuc`]s.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        matches!(&*self.0, [] | [0])
+    }
+}
+
 impl From<Seq<Vec<Nuc>>> for PackedDna {
     fn from(dna: Seq<Vec<Nuc>>) -> PackedDna {
         dna.0.into()
@@ -296,6 +314,16 @@ mod tests {
             dna in any::<[Nuc; 12]>()
         ) {
             assert_roundtrip(&dna);
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_dna_length(
+            dna in any_dna(0..50)
+        ) {
+            let packed = PackedDna::from(&dna);
+            assert_eq!(packed.len(), dna.len());
+            assert_eq!(packed.is_empty(), dna.is_empty());
         }
     }
 }

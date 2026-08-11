@@ -19,6 +19,20 @@ use crate::{AmbiAmino, Seq};
 #[derive(Clone)]
 pub struct PackedAmbiPeptide(Vec<[u8; 3]>);
 
+impl PackedAmbiPeptide {
+    /// Returns the number of [`AmbiAmino`]s in the packed peptide.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Returns `true` if the packed peptide contains no [`AmbiAmino`]s.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 impl From<Seq<Vec<AmbiAmino>>> for PackedAmbiPeptide {
     fn from(ambi_peptide: Seq<Vec<AmbiAmino>>) -> PackedAmbiPeptide {
         ambi_peptide.0.into()
@@ -164,6 +178,16 @@ mod tests {
             let packed1 = PackedAmbiPeptide::from(peptide1.as_slice());
             let packed2 = PackedAmbiPeptide::from(peptide2.as_slice());
             assert_eq!(packed1.0.cmp(&packed2.0), peptide1.cmp(&peptide2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_ambi_peptide_length(
+            ambi_peptide in any_ambi_peptide(0..50)
+        ) {
+            let packed = PackedAmbiPeptide::from(&ambi_peptide);
+            assert_eq!(packed.len(), ambi_peptide.len());
+            assert_eq!(packed.is_empty(), ambi_peptide.is_empty());
         }
     }
 }
