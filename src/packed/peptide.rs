@@ -1,6 +1,8 @@
 //! Types related to packed ambiguous peptides.
 
-use crate::{Amino, Seq};
+use std::fmt::Formatter;
+
+use crate::{Amino, Seq, iter::display};
 
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 use super::{PackableArray, UnpackingIter};
@@ -115,6 +117,20 @@ impl IntoIterator for PackedPeptide {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedPeptideIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
+impl std::fmt::Display for PackedPeptide {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.iter().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedPeptide {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedPeptide")
+            .field(&display(self.iter()))
+            .finish()
     }
 }
 
@@ -250,6 +266,26 @@ where
     }
 }
 
+impl<const N: usize> std::fmt::Display for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.iter().fmt(f)
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedArrayPeptide")
+            .field(&display(self.iter()))
+            .finish()
+    }
+}
+
 fn pack(packed: &mut [[u8; 2]], peptide: &[Amino]) {
     let (triplets, remainder) = peptide.as_chunks();
     for (pair, &[a1, a2, a3]) in packed.iter_mut().zip(triplets) {
@@ -289,6 +325,12 @@ fn unpack(peptide: &mut [Amino], packed: &[[u8; 2]]) {
 #[derive(Clone)]
 pub struct PackedPeptideIntoIter(UnpackingIter<5, 15, std::vec::IntoIter<[u8; 2]>>);
 
+impl PackedPeptideIntoIter {
+    fn as_ref(&self) -> PackedPeptideIter<'_> {
+        PackedPeptideIter(self.0.as_ref())
+    }
+}
+
 impl Iterator for PackedPeptideIntoIter {
     type Item = Amino;
 
@@ -317,6 +359,20 @@ impl ExactSizeIterator for PackedPeptideIntoIter {
     }
 }
 
+impl std::fmt::Display for PackedPeptideIntoIter {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedPeptideIntoIter {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedPeptideIntoIter")
+            .field(&display(self.as_ref()))
+            .finish()
+    }
+}
+
 /// Owned [`PackedArrayPeptide`] iterator.
 #[derive(Clone)]
 pub struct PackedArrayPeptideIntoIter<const N: usize>(
@@ -324,6 +380,15 @@ pub struct PackedArrayPeptideIntoIter<const N: usize>(
 )
 where
     [(); N]: PackableArray;
+
+impl<const N: usize> PackedArrayPeptideIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn as_ref(&self) -> PackedPeptideIter<'_> {
+        PackedPeptideIter(self.0.as_ref())
+    }
+}
 
 impl<const N: usize> Iterator for PackedArrayPeptideIntoIter<N>
 where
@@ -362,6 +427,26 @@ where
     }
 }
 
+impl<const N: usize> std::fmt::Display for PackedArrayPeptideIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for PackedArrayPeptideIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedArrayPeptideIntoIter")
+            .field(&display(self.as_ref()))
+            .finish()
+    }
+}
+
 /// Borrowed packed peptide iterator.
 #[derive(Clone)]
 pub struct PackedPeptideIter<'a>(UnpackingIter<5, 15, std::slice::Iter<'a, [u8; 2]>>);
@@ -391,6 +476,20 @@ impl DoubleEndedIterator for PackedPeptideIter<'_> {
 impl ExactSizeIterator for PackedPeptideIter<'_> {
     fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl std::fmt::Display for PackedPeptideIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        display(self.clone()).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedPeptideIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedPeptideIter")
+            .field(&display(self.clone()))
+            .finish()
     }
 }
 
@@ -433,6 +532,18 @@ mod tests {
         let peptide = Amino::seq(b"PEPTIDE").pack();
         assert_eq!(Seq(Vec::from_iter(&peptide)), "PEPTIDE");
         assert_eq!(Seq(Vec::from_iter(peptide)), "PEPTIDE");
+    }
+
+    #[test]
+    fn display() {
+        let peptide = Amino::seq(b"PEPTIDE")[..].pack();
+        assert_eq!(peptide.to_string(), "PEPTIDE");
+        assert_eq!(peptide.iter().to_string(), "PEPTIDE");
+        assert_eq!(peptide.into_iter().to_string(), "PEPTIDE");
+        let peptide = Amino::seq(b"PEPTIDE").pack();
+        assert_eq!(peptide.to_string(), "PEPTIDE");
+        assert_eq!(peptide.iter().to_string(), "PEPTIDE");
+        assert_eq!(peptide.into_iter().to_string(), "PEPTIDE");
     }
 
     proptest! {

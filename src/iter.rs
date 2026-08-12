@@ -356,6 +356,17 @@ where
     }
 }
 
+/// Construct a new [`Display`] from a cloneable iterable.
+///
+/// This is most often accessed via the [`DnaIterExt::display`] method.
+pub fn display<I>(iterable: I) -> Display<I>
+where
+    // make it easy to notice problems earlier
+    I: IntoIterator<Item: std::fmt::Display> + Clone,
+{
+    Display(iterable)
+}
+
 /// A wrapper that provides [`Display`](std::fmt::Display) and [`Debug`](std::fmt::Debug)
 /// impls contatenating the items of its contained cloneable iterables.
 ///
@@ -390,6 +401,7 @@ impl<I> Display<I> {
     /// Construct a new [`Display`] from a cloneable iterable.
     ///
     /// This is most often accessed via the [`DnaIterExt::display`] method.
+    // TODO: deprecate this in favor of display fn?
     pub fn new(iterable: I) -> Self
     where
         // make it easy to notice problems earlier

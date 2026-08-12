@@ -1,6 +1,8 @@
 //! Types related to packed ambiguous peptides.
 
-use crate::{AmbiAmino, Seq};
+use std::fmt::Formatter;
+
+use crate::{AmbiAmino, Seq, iter::display};
 
 // Note on storage: There's not much room for packing `AmbiAmino`s... we can shave off one byte,
 // but that's about it. Again, we store thing big-endian for lexical sorting reasons.
@@ -103,6 +105,20 @@ impl IntoIterator for PackedAmbiPeptide {
     }
 }
 
+impl std::fmt::Display for PackedAmbiPeptide {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.iter().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmbiPeptide {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmbiPeptide")
+            .field(&display(self.iter()))
+            .finish()
+    }
+}
+
 /// Like [`[AmbiAmino; N]`](array), but takes 25% less space.
 ///
 /// # Examples
@@ -176,6 +192,20 @@ impl<const N: usize> From<&PackedArrayAmbiPeptide<N>> for [AmbiAmino; N] {
     }
 }
 
+impl<const N: usize> std::fmt::Display for PackedArrayAmbiPeptide<N> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.iter().fmt(f)
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for PackedArrayAmbiPeptide<N> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedArrayAmbiPeptide")
+            .field(&display(self.iter()))
+            .finish()
+    }
+}
+
 impl<'a, const N: usize> IntoIterator for &'a PackedArrayAmbiPeptide<N> {
     type Item = AmbiAmino;
     type IntoIter = PackedAmbiPeptideIter<'a>;
@@ -197,6 +227,12 @@ impl<const N: usize> IntoIterator for PackedArrayAmbiPeptide<N> {
 /// Owned [`PackedAmbiPeptide`] iterator.
 #[derive(Clone)]
 pub struct PackedAmbiPeptideIntoIter(std::vec::IntoIter<[u8; 3]>);
+
+impl PackedAmbiPeptideIntoIter {
+    fn as_ref(&self) -> PackedAmbiPeptideIter<'_> {
+        PackedAmbiPeptideIter(self.0.as_slice().iter())
+    }
+}
 
 impl Iterator for PackedAmbiPeptideIntoIter {
     type Item = AmbiAmino;
@@ -222,9 +258,29 @@ impl ExactSizeIterator for PackedAmbiPeptideIntoIter {
     }
 }
 
+impl std::fmt::Display for PackedAmbiPeptideIntoIter {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmbiPeptideIntoIter {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmbiPeptideIntoIter")
+            .field(&display(self.as_ref()))
+            .finish()
+    }
+}
+
 /// Owned [`PackedArrayAmbiPeptide`] iterator.
 #[derive(Clone)]
 pub struct PackedArrayAmbiPeptideIntoIter<const N: usize>(<[[u8; 3]; N] as IntoIterator>::IntoIter);
+
+impl<const N: usize> PackedArrayAmbiPeptideIntoIter<N> {
+    fn as_ref(&self) -> PackedAmbiPeptideIter<'_> {
+        PackedAmbiPeptideIter(self.0.as_slice().iter())
+    }
+}
 
 impl<const N: usize> Iterator for PackedArrayAmbiPeptideIntoIter<N> {
     type Item = AmbiAmino;
@@ -247,6 +303,20 @@ impl<const N: usize> DoubleEndedIterator for PackedArrayAmbiPeptideIntoIter<N> {
 impl<const N: usize> ExactSizeIterator for PackedArrayAmbiPeptideIntoIter<N> {
     fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl<const N: usize> std::fmt::Display for PackedArrayAmbiPeptideIntoIter<N> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for PackedArrayAmbiPeptideIntoIter<N> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedArrayAmbiPeptideIntoIter")
+            .field(&display(self.as_ref()))
+            .finish()
     }
 }
 
@@ -280,6 +350,20 @@ impl ExactSizeIterator for PackedAmbiPeptideIter<'_> {
     }
 }
 
+impl std::fmt::Display for PackedAmbiPeptideIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        display(self.clone()).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmbiPeptideIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmbiPeptideIter")
+            .field(&display(self.clone()))
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use proptest::proptest;
@@ -307,6 +391,18 @@ mod tests {
         let ambi_peptide = AmbiAmino::seq(b"AMBI*PEPTIDE").pack();
         assert_eq!(Seq(Vec::from_iter(&ambi_peptide)), "AMBI*PEPTIDE");
         assert_eq!(Seq(Vec::from_iter(ambi_peptide)), "AMBI*PEPTIDE");
+    }
+
+    #[test]
+    fn display() {
+        let ambi_peptide = AmbiAmino::seq(b"AMBI*PEPTIDE")[..].pack();
+        assert_eq!(ambi_peptide.to_string(), "AMBI*PEPTIDE");
+        assert_eq!(ambi_peptide.iter().to_string(), "AMBI*PEPTIDE");
+        assert_eq!(ambi_peptide.into_iter().to_string(), "AMBI*PEPTIDE");
+        let ambi_peptide = AmbiAmino::seq(b"AMBI*PEPTIDE").pack();
+        assert_eq!(ambi_peptide.to_string(), "AMBI*PEPTIDE");
+        assert_eq!(ambi_peptide.iter().to_string(), "AMBI*PEPTIDE");
+        assert_eq!(ambi_peptide.into_iter().to_string(), "AMBI*PEPTIDE");
     }
 
     proptest! {

@@ -1,6 +1,8 @@
 //! Types related to packed ambiguous DNA.
 
-use crate::{AmbiNuc, Seq};
+use std::fmt::Formatter;
+
+use crate::{AmbiNuc, Seq, iter::display};
 
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 use super::{PackableArray, UnpackingIter};
@@ -112,6 +114,20 @@ impl IntoIterator for PackedAmbiDna {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedAmbiDnaIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
+impl std::fmt::Display for PackedAmbiDna {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.iter().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmbiDna {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmbiDna")
+            .field(&display(self.iter()))
+            .finish()
     }
 }
 
@@ -247,6 +263,26 @@ where
     }
 }
 
+impl<const N: usize> std::fmt::Display for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.iter().fmt(f)
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedArrayAmbiDna")
+            .field(&display(self.iter()))
+            .finish()
+    }
+}
+
 fn pack(packed: &mut [u8], ambi_dna: &[AmbiNuc]) {
     let (pairs, remainder) = ambi_dna.as_chunks();
     for (byte, &[n1, n2]) in packed.iter_mut().zip(pairs) {
@@ -276,6 +312,12 @@ fn unpack(ambi_dna: &mut [AmbiNuc], packed: &[u8]) {
 #[derive(Clone)]
 pub struct PackedAmbiDnaIntoIter(UnpackingIter<4, 8, std::vec::IntoIter<u8>>);
 
+impl PackedAmbiDnaIntoIter {
+    fn as_ref(&self) -> PackedAmbiDnaIter<'_> {
+        PackedAmbiDnaIter(self.0.as_ref())
+    }
+}
+
 impl Iterator for PackedAmbiDnaIntoIter {
     type Item = AmbiNuc;
 
@@ -304,6 +346,20 @@ impl ExactSizeIterator for PackedAmbiDnaIntoIter {
     }
 }
 
+impl std::fmt::Display for PackedAmbiDnaIntoIter {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmbiDnaIntoIter {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmbiDnaIntoIter")
+            .field(&display(self.as_ref()))
+            .finish()
+    }
+}
+
 /// Owned [`PackedArrayAmbiDna`] iterator.
 #[derive(Clone)]
 pub struct PackedArrayAmbiDnaIntoIter<const N: usize>(
@@ -311,6 +367,15 @@ pub struct PackedArrayAmbiDnaIntoIter<const N: usize>(
 )
 where
     [(); N]: PackableArray;
+
+impl<const N: usize> PackedArrayAmbiDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn as_ref(&self) -> PackedAmbiDnaIter<'_> {
+        PackedAmbiDnaIter(self.0.as_ref())
+    }
+}
 
 impl<const N: usize> Iterator for PackedArrayAmbiDnaIntoIter<N>
 where
@@ -349,6 +414,26 @@ where
     }
 }
 
+impl<const N: usize> std::fmt::Display for PackedArrayAmbiDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for PackedArrayAmbiDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedArrayAmbiDnaIntoIter")
+            .field(&display(self.as_ref()))
+            .finish()
+    }
+}
+
 /// Borrowed packed ambiguous DNA iterator.
 #[derive(Clone)]
 pub struct PackedAmbiDnaIter<'a>(UnpackingIter<4, 8, std::slice::Iter<'a, u8>>);
@@ -378,6 +463,20 @@ impl DoubleEndedIterator for PackedAmbiDnaIter<'_> {
 impl ExactSizeIterator for PackedAmbiDnaIter<'_> {
     fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl std::fmt::Display for PackedAmbiDnaIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        display(self.clone()).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmbiDnaIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmbiDnaIter")
+            .field(&display(self.clone()))
+            .finish()
     }
 }
 
@@ -420,6 +519,18 @@ mod tests {
         let ambi_dna = AmbiNuc::seq(b"AMBACGT").pack();
         assert_eq!(Seq(Vec::from_iter(&ambi_dna)), "AMBACGT");
         assert_eq!(Seq(Vec::from_iter(ambi_dna)), "AMBACGT");
+    }
+
+    #[test]
+    fn display() {
+        let ambi_dna = AmbiNuc::seq(b"AMBACGT")[..].pack();
+        assert_eq!(ambi_dna.to_string(), "AMBACGT");
+        assert_eq!(ambi_dna.iter().to_string(), "AMBACGT");
+        assert_eq!(ambi_dna.into_iter().to_string(), "AMBACGT");
+        let ambi_dna = AmbiNuc::seq(b"AMBACGT").pack();
+        assert_eq!(ambi_dna.to_string(), "AMBACGT");
+        assert_eq!(ambi_dna.iter().to_string(), "AMBACGT");
+        assert_eq!(ambi_dna.into_iter().to_string(), "AMBACGT");
     }
 
     proptest! {

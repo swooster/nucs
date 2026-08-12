@@ -1,6 +1,8 @@
 //! Types related to packed DNA.
 
-use crate::{Nuc, Seq};
+use std::fmt::Formatter;
+
+use crate::{Nuc, Seq, iter::display};
 
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 use super::{PackableArray, UnpackingIter};
@@ -125,6 +127,20 @@ impl IntoIterator for PackedDna {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedDnaIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
+impl std::fmt::Display for PackedDna {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.iter().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedDna {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedDna")
+            .field(&display(self.iter()))
+            .finish()
     }
 }
 
@@ -260,6 +276,26 @@ where
     }
 }
 
+impl<const N: usize> std::fmt::Display for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.iter().fmt(f)
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedArrayDna")
+            .field(&display(self.iter()))
+            .finish()
+    }
+}
+
 fn pack(packed: &mut [u8], dna: &[Nuc]) {
     let (quads, remainder) = dna.as_chunks();
     for (byte, &[n1, n2, n3, n4]) in packed.iter_mut().zip(quads) {
@@ -296,6 +332,12 @@ fn unpack(dna: &mut [Nuc], packed: &[u8]) {
 #[derive(Clone)]
 pub struct PackedDnaIntoIter(UnpackingIter<2, 8, std::vec::IntoIter<u8>>);
 
+impl PackedDnaIntoIter {
+    fn as_ref(&self) -> PackedDnaIter<'_> {
+        PackedDnaIter(self.0.as_ref())
+    }
+}
+
 impl Iterator for PackedDnaIntoIter {
     type Item = Nuc;
 
@@ -324,6 +366,20 @@ impl ExactSizeIterator for PackedDnaIntoIter {
     }
 }
 
+impl std::fmt::Display for PackedDnaIntoIter {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedDnaIntoIter {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedDnaIntoIter")
+            .field(&display(self.as_ref()))
+            .finish()
+    }
+}
+
 /// Owned [`PackedArrayDna`] iterator.
 #[derive(Clone)]
 pub struct PackedArrayDnaIntoIter<const N: usize>(
@@ -331,6 +387,15 @@ pub struct PackedArrayDnaIntoIter<const N: usize>(
 )
 where
     [(); N]: PackableArray;
+
+impl<const N: usize> PackedArrayDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn as_ref(&self) -> PackedDnaIter<'_> {
+        PackedDnaIter(self.0.as_ref())
+    }
+}
 
 impl<const N: usize> Iterator for PackedArrayDnaIntoIter<N>
 where
@@ -369,6 +434,26 @@ where
     }
 }
 
+impl<const N: usize> std::fmt::Display for PackedArrayDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for PackedArrayDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedArrayDnaIntoIter")
+            .field(&display(self.as_ref()))
+            .finish()
+    }
+}
+
 /// Borrowed packed DNA iterator.
 #[derive(Clone)]
 pub struct PackedDnaIter<'a>(UnpackingIter<2, 8, std::slice::Iter<'a, u8>>);
@@ -398,6 +483,20 @@ impl DoubleEndedIterator for PackedDnaIter<'_> {
 impl ExactSizeIterator for PackedDnaIter<'_> {
     fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+impl std::fmt::Display for PackedDnaIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        display(self.clone()).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedDnaIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedDnaIter")
+            .field(&display(self.clone()))
+            .finish()
     }
 }
 
@@ -452,6 +551,18 @@ mod tests {
         let dna = Nuc::seq(b"ACGT").pack();
         assert_eq!(Seq(Vec::from_iter(&dna)), "ACGT");
         assert_eq!(Seq(Vec::from_iter(dna)), "ACGT");
+    }
+
+    #[test]
+    fn display() {
+        let dna = Nuc::seq(b"ACGT")[..].pack();
+        assert_eq!(dna.to_string(), "ACGT");
+        assert_eq!(dna.iter().to_string(), "ACGT");
+        assert_eq!(dna.into_iter().to_string(), "ACGT");
+        let dna = Nuc::seq(b"ACGT").pack();
+        assert_eq!(dna.to_string(), "ACGT");
+        assert_eq!(dna.iter().to_string(), "ACGT");
+        assert_eq!(dna.into_iter().to_string(), "ACGT");
     }
 
     proptest! {
