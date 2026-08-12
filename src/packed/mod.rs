@@ -2,7 +2,7 @@
 
 use std::ops::Range;
 
-use crate::{AmbiAmino, AmbiNuc, Amino, Nuc};
+use crate::{AmbiAmino, AmbiNuc, Amino, Nuc, packed::packable_array::ContiguousIterator};
 
 pub mod ambidna;
 pub mod ambipeptide;
@@ -112,19 +112,19 @@ pub(crate) mod packable_array {
             + AsMut<[T]>
             + Copy
             + ArrayDefault
-            + IntoIterator<Item = T, IntoIter: ContiguousIterator>;
+            + IntoIterator<Item = T, IntoIter: ContiguousIterator<SliceItem = T>>;
         /// `[T; N.div_ceil(3)]`
         type By3<T: Copy + Default>: AsRef<[T]>
             + AsMut<[T]>
             + Copy
             + ArrayDefault
-            + IntoIterator<Item = T, IntoIter: ContiguousIterator>;
+            + IntoIterator<Item = T, IntoIter: ContiguousIterator<SliceItem = T>>;
         /// `[T; N.div_ceil(4)]`
         type By4<T: Copy + Default>: AsRef<[T]>
             + AsMut<[T]>
             + Copy
             + ArrayDefault
-            + IntoIterator<Item = T, IntoIter: ContiguousIterator>;
+            + IntoIterator<Item = T, IntoIter: ContiguousIterator<SliceItem = T>>;
     }
 
     /// Workaround for `[T; N]: Default` being limited to `N <= 32`.
@@ -141,11 +141,19 @@ pub(crate) mod packable_array {
     pub trait ContiguousIterator:
         DoubleEndedIterator + ExactSizeIterator + Clone + Default
     {
+        type SliceItem;
+        fn as_slice(&self) -> &[Self::SliceItem];
         fn peek_front(&self) -> Option<Self::Item>;
         fn peek_back(&self) -> Option<Self::Item>;
     }
 
     impl<T: Copy, const N: usize> ContiguousIterator for std::array::IntoIter<T, N> {
+        type SliceItem = T;
+
+        fn as_slice(&self) -> &[Self::SliceItem] {
+            self.as_slice()
+        }
+
         fn peek_front(&self) -> Option<Self::Item> {
             self.as_slice().first().copied()
         }
@@ -156,6 +164,12 @@ pub(crate) mod packable_array {
     }
 
     impl<T: Copy> ContiguousIterator for std::vec::IntoIter<T> {
+        type SliceItem = T;
+
+        fn as_slice(&self) -> &[Self::SliceItem] {
+            self.as_slice()
+        }
+
         fn peek_front(&self) -> Option<Self::Item> {
             self.as_slice().first().copied()
         }
@@ -166,6 +180,12 @@ pub(crate) mod packable_array {
     }
 
     impl<T> ContiguousIterator for std::slice::Iter<'_, T> {
+        type SliceItem = T;
+
+        fn as_slice(&self) -> &[Self::SliceItem] {
+            self.as_slice()
+        }
+
         fn peek_front(&self) -> Option<Self::Item> {
             self.as_slice().first()
         }
@@ -274,10 +294,7 @@ pub(crate) struct UnpackingIter<const STEP: u8, const MAX: u8, I> {
     back_shift: u8,
 }
 
-impl<const STEP: u8, const MAX: u8, I> UnpackingIter<STEP, MAX, I>
-where
-    I: DoubleEndedIterator + ExactSizeIterator + Default,
-{
+impl<const STEP: u8, const MAX: u8, I: ContiguousIterator> UnpackingIter<STEP, MAX, I> {
     // NOTE: caller must check that range is valid
     pub(crate) fn new(range: Range<usize>, iterable: impl IntoIterator<IntoIter = I>) -> Self {
         let Range { start, end } = range;
@@ -307,6 +324,14 @@ where
         let word_idx = u8::try_from(word_idx).expect("division by u8 should produce u8 remainder");
         let shift = MAX - STEP - STEP * word_idx;
         (idx, shift)
+    }
+
+    fn as_ref(&self) -> UnpackingIter<STEP, MAX, std::slice::Iter<'_, I::SliceItem>> {
+        UnpackingIter {
+            iter: self.iter.as_slice().iter(),
+            front_shift: self.front_shift,
+            back_shift: self.back_shift,
+        }
     }
 }
 
