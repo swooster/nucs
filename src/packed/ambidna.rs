@@ -83,14 +83,9 @@ impl From<PackedAmbiDna> for Vec<AmbiNuc> {
 
 impl From<&PackedAmbiDna> for Vec<AmbiNuc> {
     fn from(packed_ambi_dna: &PackedAmbiDna) -> Vec<AmbiNuc> {
-        if let Some(byte) = packed_ambi_dna.0.last() {
-            let len = 2 * packed_ambi_dna.0.len() - usize::from(byte.trailing_zeros() >= 4);
-            let mut ambi_dna = vec![AmbiNuc::default(); len];
-            unpack(&mut ambi_dna, &packed_ambi_dna.0);
-            ambi_dna
-        } else {
-            vec![]
-        }
+        let mut ambi_dna = vec![AmbiNuc::default(); packed_ambi_dna.len()];
+        unpack(&mut ambi_dna, &packed_ambi_dna.0);
+        ambi_dna
     }
 }
 

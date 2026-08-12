@@ -92,14 +92,7 @@ impl From<PackedPeptide> for Vec<Amino> {
 
 impl From<&PackedPeptide> for Vec<Amino> {
     fn from(packed_peptide: &PackedPeptide) -> Vec<Amino> {
-        let len = match packed_peptide.0.as_chunks::<2>() {
-            (pairs, [_]) => 3 * pairs.len() + 1,
-            (pairs @ [.., last_pair], []) => {
-                3 * pairs.len() - (u16::from_be_bytes(*last_pair).trailing_zeros() / 5) as usize
-            }
-            _ => return vec![],
-        };
-        let mut peptide = vec![Amino::default(); len];
+        let mut peptide = vec![Amino::default(); packed_peptide.len()];
         unpack(&mut peptide, &packed_peptide.0);
         peptide
     }
