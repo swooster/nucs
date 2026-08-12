@@ -1,7 +1,9 @@
+//! Types related to packed DNA.
+
 use crate::{Nuc, Seq};
 
-use super::PackableArray;
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
+use super::{PackableArray, UnpackingIter};
 
 // Note on storage: Nucs are packed big-endian. Sadly, this encoding DOES NOT maintain lexical
 // ordering, due to the suffix (see below).
@@ -44,6 +46,12 @@ impl PackedDna {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         matches!(&*self.0, [] | [0])
+    }
+
+    /// Returns an iterator over the packed DNA.
+    #[must_use]
+    pub fn iter(&self) -> PackedDnaIter<'_> {
+        self.into_iter()
     }
 }
 
@@ -102,6 +110,24 @@ impl From<&PackedDna> for Vec<Nuc> {
     }
 }
 
+impl<'a> IntoIterator for &'a PackedDna {
+    type Item = Nuc;
+    type IntoIter = PackedDnaIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedDnaIter(UnpackingIter::new(0..self.len(), &self.0))
+    }
+}
+
+impl IntoIterator for PackedDna {
+    type Item = Nuc;
+    type IntoIter = PackedDnaIntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedDnaIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
 /// Like [`[Nuc; N]`](array), but takes 75% less space.
 ///
 /// # Examples
@@ -117,9 +143,22 @@ impl From<&PackedDna> for Vec<Nuc> {
 /// assert_eq!(unpacked, dna);
 /// ```
 #[derive(Clone, Copy)]
-pub struct PackedArrayDna<const N: usize>(<[(); N] as ArrayDivide>::By4<u8>)
+pub struct PackedArrayDna<const N: usize>(PackedBuf<N>)
 where
     [(); N]: PackableArray;
+
+type PackedBuf<const N: usize> = <[(); N] as ArrayDivide>::By4<u8>;
+
+impl<const N: usize> PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    /// Returns an iterator over the packed DNA.
+    #[must_use]
+    pub fn iter(&self) -> PackedDnaIter<'_> {
+        self.into_iter()
+    }
+}
 
 impl<const N: usize> From<Seq<[Nuc; N]>> for PackedArrayDna<N>
 where
@@ -197,6 +236,30 @@ where
     }
 }
 
+impl<'a, const N: usize> IntoIterator for &'a PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = Nuc;
+    type IntoIter = PackedDnaIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedDnaIter(UnpackingIter::new(0..N, self.0.as_ref()))
+    }
+}
+
+impl<const N: usize> IntoIterator for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = Nuc;
+    type IntoIter = PackedArrayDnaIntoIter<N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedArrayDnaIntoIter(UnpackingIter::new(0..N, self.0))
+    }
+}
+
 fn pack(packed: &mut [u8], dna: &[Nuc]) {
     let (quads, remainder) = dna.as_chunks();
     for (byte, &[n1, n2, n3, n4]) in packed.iter_mut().zip(quads) {
@@ -226,6 +289,115 @@ fn unpack(dna: &mut [Nuc], packed: &[u8]) {
         for (offset, nuc) in [6, 4, 2].into_iter().zip(remainder) {
             *nuc = Nuc::decompress(byte >> offset);
         }
+    }
+}
+
+/// Owned [`PackedDna`] iterator.
+#[derive(Clone)]
+pub struct PackedDnaIntoIter(UnpackingIter<2, 8, std::vec::IntoIter<u8>>);
+
+impl Iterator for PackedDnaIntoIter {
+    type Item = Nuc;
+
+    fn next(&mut self) -> Option<Nuc> {
+        self.0
+            .next()
+            .map(|(shift, byte)| Nuc::decompress(byte >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for PackedDnaIntoIter {
+    fn next_back(&mut self) -> Option<Nuc> {
+        self.0
+            .next_back()
+            .map(|(shift, byte)| Nuc::decompress(byte >> shift))
+    }
+}
+
+impl ExactSizeIterator for PackedDnaIntoIter {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// Owned [`PackedArrayDna`] iterator.
+#[derive(Clone)]
+pub struct PackedArrayDnaIntoIter<const N: usize>(
+    UnpackingIter<2, 8, <PackedBuf<N> as IntoIterator>::IntoIter>,
+)
+where
+    [(); N]: PackableArray;
+
+impl<const N: usize> Iterator for PackedArrayDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = Nuc;
+
+    fn next(&mut self) -> Option<Nuc> {
+        self.0
+            .next()
+            .map(|(shift, byte)| Nuc::decompress(byte >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<const N: usize> DoubleEndedIterator for PackedArrayDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn next_back(&mut self) -> Option<Nuc> {
+        self.0
+            .next_back()
+            .map(|(shift, byte)| Nuc::decompress(byte >> shift))
+    }
+}
+
+impl<const N: usize> ExactSizeIterator for PackedArrayDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// Borrowed packed DNA iterator.
+#[derive(Clone)]
+pub struct PackedDnaIter<'a>(UnpackingIter<2, 8, std::slice::Iter<'a, u8>>);
+
+impl Iterator for PackedDnaIter<'_> {
+    type Item = Nuc;
+
+    fn next(&mut self) -> Option<Nuc> {
+        self.0
+            .next()
+            .map(|(shift, byte)| Nuc::decompress(byte >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for PackedDnaIter<'_> {
+    fn next_back(&mut self) -> Option<Nuc> {
+        self.0
+            .next_back()
+            .map(|(shift, byte)| Nuc::decompress(byte >> shift))
+    }
+}
+
+impl ExactSizeIterator for PackedDnaIter<'_> {
+    fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -268,6 +440,18 @@ mod tests {
                 }
             }
         }
+    }
+
+    // The bulk of the fiddly logic is handled by UnpackingIter, which has more tests.
+    // This is just sanity-checking that things were hooked up to it correctly.
+    #[test]
+    fn smoke_test_iters() {
+        let dna = Nuc::seq(b"ACGT")[..].pack();
+        assert_eq!(Seq(Vec::from_iter(&dna)), "ACGT");
+        assert_eq!(Seq(Vec::from_iter(dna)), "ACGT");
+        let dna = Nuc::seq(b"ACGT").pack();
+        assert_eq!(Seq(Vec::from_iter(&dna)), "ACGT");
+        assert_eq!(Seq(Vec::from_iter(dna)), "ACGT");
     }
 
     proptest! {

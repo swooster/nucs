@@ -1,7 +1,9 @@
+//! Types related to packed ambiguous DNA.
+
 use crate::{AmbiNuc, Seq};
 
-use super::PackableArray;
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
+use super::{PackableArray, UnpackingIter};
 
 // Note on storage: AmbiNucs are packed big-endian so naive lexical sorting of bytes is correct.
 //
@@ -38,6 +40,12 @@ impl PackedAmbiDna {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Returns an iterator over the packed DNA.
+    #[must_use]
+    pub fn iter(&self) -> PackedAmbiDnaIter<'_> {
+        self.into_iter()
     }
 }
 
@@ -89,6 +97,24 @@ impl From<&PackedAmbiDna> for Vec<AmbiNuc> {
     }
 }
 
+impl<'a> IntoIterator for &'a PackedAmbiDna {
+    type Item = AmbiNuc;
+    type IntoIter = PackedAmbiDnaIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedAmbiDnaIter(UnpackingIter::new(0..self.len(), &self.0))
+    }
+}
+
+impl IntoIterator for PackedAmbiDna {
+    type Item = AmbiNuc;
+    type IntoIter = PackedAmbiDnaIntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedAmbiDnaIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
 /// Like [`[AmbiNuc; N]`](array), but takes 50% less space.
 ///
 /// # Examples
@@ -104,9 +130,22 @@ impl From<&PackedAmbiDna> for Vec<AmbiNuc> {
 /// assert_eq!(unpacked, dna);
 /// ```
 #[derive(Clone, Copy)]
-pub struct PackedArrayAmbiDna<const N: usize>(<[(); N] as ArrayDivide>::By2<u8>)
+pub struct PackedArrayAmbiDna<const N: usize>(PackedBuf<N>)
 where
     [(); N]: PackableArray;
+
+type PackedBuf<const N: usize> = <[(); N] as ArrayDivide>::By2<u8>;
+
+impl<const N: usize> PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    /// Returns an iterator over the packed DNA.
+    #[must_use]
+    pub fn iter(&self) -> PackedAmbiDnaIter<'_> {
+        self.into_iter()
+    }
+}
 
 impl<const N: usize> From<Seq<[AmbiNuc; N]>> for PackedArrayAmbiDna<N>
 where
@@ -184,6 +223,30 @@ where
     }
 }
 
+impl<'a, const N: usize> IntoIterator for &'a PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = AmbiNuc;
+    type IntoIter = PackedAmbiDnaIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedAmbiDnaIter(UnpackingIter::new(0..N, self.0.as_ref()))
+    }
+}
+
+impl<const N: usize> IntoIterator for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = AmbiNuc;
+    type IntoIter = PackedArrayAmbiDnaIntoIter<N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedArrayAmbiDnaIntoIter(UnpackingIter::new(0..N, self.0))
+    }
+}
+
 fn pack(packed: &mut [u8], ambi_dna: &[AmbiNuc]) {
     let (pairs, remainder) = ambi_dna.as_chunks();
     for (byte, &[n1, n2]) in packed.iter_mut().zip(pairs) {
@@ -206,6 +269,115 @@ fn unpack(ambi_dna: &mut [AmbiNuc], packed: &[u8]) {
         && let [ambi_nuc] = remainder
     {
         *ambi_nuc = AmbiNuc::decompress(byte >> 4);
+    }
+}
+
+/// Owned [`PackedAmbiDna`] iterator.
+#[derive(Clone)]
+pub struct PackedAmbiDnaIntoIter(UnpackingIter<4, 8, std::vec::IntoIter<u8>>);
+
+impl Iterator for PackedAmbiDnaIntoIter {
+    type Item = AmbiNuc;
+
+    fn next(&mut self) -> Option<AmbiNuc> {
+        self.0
+            .next()
+            .map(|(shift, byte)| AmbiNuc::decompress(byte >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for PackedAmbiDnaIntoIter {
+    fn next_back(&mut self) -> Option<AmbiNuc> {
+        self.0
+            .next_back()
+            .map(|(shift, byte)| AmbiNuc::decompress(byte >> shift))
+    }
+}
+
+impl ExactSizeIterator for PackedAmbiDnaIntoIter {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// Owned [`PackedArrayAmbiDna`] iterator.
+#[derive(Clone)]
+pub struct PackedArrayAmbiDnaIntoIter<const N: usize>(
+    UnpackingIter<4, 8, <PackedBuf<N> as IntoIterator>::IntoIter>,
+)
+where
+    [(); N]: PackableArray;
+
+impl<const N: usize> Iterator for PackedArrayAmbiDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = AmbiNuc;
+
+    fn next(&mut self) -> Option<AmbiNuc> {
+        self.0
+            .next()
+            .map(|(shift, byte)| AmbiNuc::decompress(byte >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<const N: usize> DoubleEndedIterator for PackedArrayAmbiDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn next_back(&mut self) -> Option<AmbiNuc> {
+        self.0
+            .next_back()
+            .map(|(shift, byte)| AmbiNuc::decompress(byte >> shift))
+    }
+}
+
+impl<const N: usize> ExactSizeIterator for PackedArrayAmbiDnaIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// Borrowed packed ambiguous DNA iterator.
+#[derive(Clone)]
+pub struct PackedAmbiDnaIter<'a>(UnpackingIter<4, 8, std::slice::Iter<'a, u8>>);
+
+impl Iterator for PackedAmbiDnaIter<'_> {
+    type Item = AmbiNuc;
+
+    fn next(&mut self) -> Option<AmbiNuc> {
+        self.0
+            .next()
+            .map(|(shift, byte)| AmbiNuc::decompress(byte >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for PackedAmbiDnaIter<'_> {
+    fn next_back(&mut self) -> Option<AmbiNuc> {
+        self.0
+            .next_back()
+            .map(|(shift, byte)| AmbiNuc::decompress(byte >> shift))
+    }
+}
+
+impl ExactSizeIterator for PackedAmbiDnaIter<'_> {
+    fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -236,6 +408,18 @@ mod tests {
                 }
             }
         }
+    }
+
+    // The bulk of the fiddly logic is handled by UnpackingIter, which has more tests.
+    // This is just sanity-checking that things were hooked up to it correctly.
+    #[test]
+    fn smoke_test_iters() {
+        let ambi_dna = AmbiNuc::seq(b"AMBACGT")[..].pack();
+        assert_eq!(Seq(Vec::from_iter(&ambi_dna)), "AMBACGT");
+        assert_eq!(Seq(Vec::from_iter(ambi_dna)), "AMBACGT");
+        let ambi_dna = AmbiNuc::seq(b"AMBACGT").pack();
+        assert_eq!(Seq(Vec::from_iter(&ambi_dna)), "AMBACGT");
+        assert_eq!(Seq(Vec::from_iter(ambi_dna)), "AMBACGT");
     }
 
     proptest! {

@@ -1,7 +1,9 @@
+//! Types related to packed ambiguous peptides.
+
 use crate::{Amino, Seq};
 
-use super::PackableArray;
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
+use super::{PackableArray, UnpackingIter};
 
 // Note on storage: Aminos are packed big-endian so naive lexical sorting of bytes is correct.
 // The [u8; 2] themselves are big-endian u16s, for the same reason.
@@ -41,6 +43,12 @@ impl PackedPeptide {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Returns an iterator over the packed peptide.
+    #[must_use]
+    pub fn iter(&self) -> PackedPeptideIter<'_> {
+        self.into_iter()
     }
 }
 
@@ -92,6 +100,24 @@ impl From<&PackedPeptide> for Vec<Amino> {
     }
 }
 
+impl<'a> IntoIterator for &'a PackedPeptide {
+    type Item = Amino;
+    type IntoIter = PackedPeptideIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedPeptideIter(UnpackingIter::new(0..self.len(), &self.0))
+    }
+}
+
+impl IntoIterator for PackedPeptide {
+    type Item = Amino;
+    type IntoIter = PackedPeptideIntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedPeptideIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
 /// Like [`[Amino; N]`](array), but takes 33% less space.
 ///
 /// # Examples
@@ -107,9 +133,22 @@ impl From<&PackedPeptide> for Vec<Amino> {
 /// assert_eq!(unpacked, peptide);
 /// ```
 #[derive(Clone, Copy)]
-pub struct PackedArrayPeptide<const N: usize>(<[(); N] as ArrayDivide>::By3<[u8; 2]>)
+pub struct PackedArrayPeptide<const N: usize>(PackedBuf<N>)
 where
     [(); N]: PackableArray;
+
+type PackedBuf<const N: usize> = <[(); N] as ArrayDivide>::By3<[u8; 2]>;
+
+impl<const N: usize> PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    /// Returns an iterator over the packed peptide.
+    #[must_use]
+    pub fn iter(&self) -> PackedPeptideIter<'_> {
+        self.into_iter()
+    }
+}
 
 impl<const N: usize> From<Seq<[Amino; N]>> for PackedArrayPeptide<N>
 where
@@ -187,6 +226,30 @@ where
     }
 }
 
+impl<'a, const N: usize> IntoIterator for &'a PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = Amino;
+    type IntoIter = PackedPeptideIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedPeptideIter(UnpackingIter::new(0..N, self.0.as_ref()))
+    }
+}
+
+impl<const N: usize> IntoIterator for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = Amino;
+    type IntoIter = PackedArrayPeptideIntoIter<N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedArrayPeptideIntoIter(UnpackingIter::new(0..N, self.0))
+    }
+}
+
 fn pack(packed: &mut [[u8; 2]], peptide: &[Amino]) {
     let (triplets, remainder) = peptide.as_chunks();
     for (pair, &[a1, a2, a3]) in packed.iter_mut().zip(triplets) {
@@ -222,6 +285,115 @@ fn unpack(peptide: &mut [Amino], packed: &[[u8; 2]]) {
     }
 }
 
+/// Owned [`PackedPeptide`] iterator.
+#[derive(Clone)]
+pub struct PackedPeptideIntoIter(UnpackingIter<5, 15, std::vec::IntoIter<[u8; 2]>>);
+
+impl Iterator for PackedPeptideIntoIter {
+    type Item = Amino;
+
+    fn next(&mut self) -> Option<Amino> {
+        self.0
+            .next()
+            .map(|(shift, bytes)| Amino::decompress(u16::from_be_bytes(bytes) >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for PackedPeptideIntoIter {
+    fn next_back(&mut self) -> Option<Amino> {
+        self.0
+            .next_back()
+            .map(|(shift, bytes)| Amino::decompress(u16::from_be_bytes(bytes) >> shift))
+    }
+}
+
+impl ExactSizeIterator for PackedPeptideIntoIter {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// Owned [`PackedArrayPeptide`] iterator.
+#[derive(Clone)]
+pub struct PackedArrayPeptideIntoIter<const N: usize>(
+    UnpackingIter<5, 15, <PackedBuf<N> as IntoIterator>::IntoIter>,
+)
+where
+    [(); N]: PackableArray;
+
+impl<const N: usize> Iterator for PackedArrayPeptideIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = Amino;
+
+    fn next(&mut self) -> Option<Amino> {
+        self.0
+            .next()
+            .map(|(shift, bytes)| Amino::decompress(u16::from_be_bytes(bytes) >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<const N: usize> DoubleEndedIterator for PackedArrayPeptideIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn next_back(&mut self) -> Option<Amino> {
+        self.0
+            .next_back()
+            .map(|(shift, bytes)| Amino::decompress(u16::from_be_bytes(bytes) >> shift))
+    }
+}
+
+impl<const N: usize> ExactSizeIterator for PackedArrayPeptideIntoIter<N>
+where
+    [(); N]: PackableArray,
+{
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// Borrowed packed peptide iterator.
+#[derive(Clone)]
+pub struct PackedPeptideIter<'a>(UnpackingIter<5, 15, std::slice::Iter<'a, [u8; 2]>>);
+
+impl Iterator for PackedPeptideIter<'_> {
+    type Item = Amino;
+
+    fn next(&mut self) -> Option<Amino> {
+        self.0
+            .next()
+            .map(|(shift, bytes)| Amino::decompress(u16::from_be_bytes(*bytes) >> shift))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for PackedPeptideIter<'_> {
+    fn next_back(&mut self) -> Option<Amino> {
+        self.0
+            .next_back()
+            .map(|(shift, bytes)| Amino::decompress(u16::from_be_bytes(*bytes) >> shift))
+    }
+}
+
+impl ExactSizeIterator for PackedPeptideIter<'_> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use proptest::{arbitrary::any, proptest};
@@ -249,6 +421,18 @@ mod tests {
                 }
             }
         }
+    }
+
+    // The bulk of the fiddly logic is handled by UnpackingIter, which has more tests.
+    // This is just sanity-checking that things were hooked up to it correctly.
+    #[test]
+    fn smoke_test_iters() {
+        let peptide = Amino::seq(b"PEPTIDE")[..].pack();
+        assert_eq!(Seq(Vec::from_iter(&peptide)), "PEPTIDE");
+        assert_eq!(Seq(Vec::from_iter(peptide)), "PEPTIDE");
+        let peptide = Amino::seq(b"PEPTIDE").pack();
+        assert_eq!(Seq(Vec::from_iter(&peptide)), "PEPTIDE");
+        assert_eq!(Seq(Vec::from_iter(peptide)), "PEPTIDE");
     }
 
     proptest! {
