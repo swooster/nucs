@@ -577,8 +577,8 @@ mod tests {
         let packed_ambi_dna = AmbiNuc::seq(b"AMBACGT")[..].pack();
         assert_eq!(Seq::from(packed_ambi_dna), "AMBACGT");
 
-        let packed_peptide = Amino::seq(b"PEPTIDE")[..].pack();
-        assert_eq!(Seq::from(packed_peptide), "PEPTIDE");
+        let packed_peptide = Amino::seq(b"A*PEPTIDE")[..].pack();
+        assert_eq!(Seq::from(packed_peptide), "A*PEPTIDE");
 
         let packed_ambi_peptide = AmbiAmino::seq(b"AMBIPEPTIDE")[..].pack();
         assert_eq!(Seq::from(packed_ambi_peptide), "AMBIPEPTIDE");
@@ -592,8 +592,8 @@ mod tests {
         let packed_ambi_dna = Seq(AmbiNuc::arr(b"AMBACGT").to_vec()).pack();
         assert_eq!(Seq::from(packed_ambi_dna), "AMBACGT");
 
-        let packed_peptide = Seq(Amino::arr(b"PEPTIDE").to_vec()).pack();
-        assert_eq!(Seq::from(packed_peptide), "PEPTIDE");
+        let packed_peptide = Seq(Amino::arr(b"A*PEPTIDE").to_vec()).pack();
+        assert_eq!(Seq::from(packed_peptide), "A*PEPTIDE");
 
         let packed_ambi_peptide = Seq(AmbiAmino::arr(b"AMBIPEPTIDE").to_vec()).pack();
         assert_eq!(Seq::from(packed_ambi_peptide), "AMBIPEPTIDE");
@@ -613,11 +613,11 @@ mod tests {
         assert_eq!(size_of_val(&unpacked_ambi_dna), 7);
         assert_eq!(unpacked_ambi_dna, "AMBACGT");
 
-        let packed_peptide = Amino::seq(b"PEPTIDE").pack();
-        assert_eq!(size_of_val(&packed_peptide), 5);
+        let packed_peptide = Amino::seq(b"A*PEPTIDE").pack();
+        assert_eq!(size_of_val(&packed_peptide), 6);
         let unpacked_peptide = Seq::from(packed_peptide);
-        assert_eq!(size_of_val(&unpacked_peptide), 7);
-        assert_eq!(unpacked_peptide, "PEPTIDE");
+        assert_eq!(size_of_val(&unpacked_peptide), 9);
+        assert_eq!(unpacked_peptide, "A*PEPTIDE");
 
         let packed_ambi_peptide = AmbiAmino::seq(b"AMBIPEPTIDE").pack();
         assert_eq!(size_of_val(&packed_ambi_peptide), 33);

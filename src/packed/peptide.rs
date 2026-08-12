@@ -7,11 +7,7 @@ use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 // The [u8; 2] themselves are big-endian u16s, for the same reason.
 //
 // The last word of a non-empty `PackedPeptide` must have 1-3 elements. If it has 2 elements,
-// the 5 least-significant bits are 0. If it has 1 element, the 10 least-significant bits would
-// be 0, so only the upper byte is stored; this means the amino is at bits 2..7, not 0..5.
-
-// NOTE to future self: when implementing iterators, it'll make the most sense to cast to
-// &[[u8; 2]] then chain its iter to an Option<Amino>.
+// the 5 least-significant bits are 0. If it has 1 element, the 10 least-significant bits are 0.
 
 /// Like [`Vec<Amino>`], but takes 33% less space for long peptides.
 ///
@@ -26,20 +22,18 @@ use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 /// assert_eq!(unpacked, peptide);
 /// ```
 #[derive(Clone)]
-pub struct PackedPeptide(Vec<u8>);
+pub struct PackedPeptide(Vec<[u8; 2]>);
 
 impl PackedPeptide {
     /// Returns the number of [`Amino`]s in the packed peptide.
     #[must_use]
     pub fn len(&self) -> usize {
         // len <= `usize::MAX` is an invariant of this type, so no need to worry about overflow.
-        match self.0.as_chunks() {
-            ([], []) => 0,
-            (bulk @ [.., last], []) => {
-                3 * bulk.len() - (u16::from_be_bytes(*last).trailing_zeros() / 5) as usize
+        match &*self.0 {
+            [] => 0,
+            bulk @ [.., tail] => {
+                3 * bulk.len() - (u16::from_be_bytes(*tail).trailing_zeros() / 5) as usize
             }
-            (bulk, [_]) => 3 * bulk.len() + 1,
-            (_, [_, _, ..]) => unreachable!(),
         }
     }
 
@@ -65,8 +59,8 @@ impl From<Vec<Amino>> for PackedPeptide {
 impl<T: AsRef<[Amino]> + ?Sized> From<&T> for PackedPeptide {
     fn from(peptide: &T) -> PackedPeptide {
         let peptide = peptide.as_ref();
-        let packed_len = (2 * peptide.len()).div_ceil(3);
-        let mut packed = vec![0; packed_len];
+        let packed_len = peptide.len().div_ceil(3);
+        let mut packed = vec![[0, 0]; packed_len];
         pack(&mut packed, peptide);
         Self(packed)
     }
@@ -113,7 +107,7 @@ impl From<&PackedPeptide> for Vec<Amino> {
 /// assert_eq!(unpacked, peptide);
 /// ```
 #[derive(Clone, Copy)]
-pub struct PackedArrayPeptide<const N: usize>(<[(); N] as ArrayDivide>::By3_2<u8>)
+pub struct PackedArrayPeptide<const N: usize>(<[(); N] as ArrayDivide>::By3<[u8; 2]>)
 where
     [(); N]: PackableArray;
 
@@ -193,39 +187,34 @@ where
     }
 }
 
-fn pack(packed: &mut [u8], peptide: &[Amino]) {
-    let (pairs, packed_remainder) = packed.as_chunks_mut();
-    let (triplets, peptide_remainder) = peptide.as_chunks();
-    for (pair, &[a1, a2, a3]) in pairs.iter_mut().zip(triplets) {
+fn pack(packed: &mut [[u8; 2]], peptide: &[Amino]) {
+    let (triplets, remainder) = peptide.as_chunks();
+    for (pair, &[a1, a2, a3]) in packed.iter_mut().zip(triplets) {
         *pair = (a3.compress() | (a2.compress() << 5) | (a1.compress() << 10)).to_be_bytes();
     }
-    match (packed_remainder, peptide_remainder) {
-        ([], []) => {}
-        ([b1], &[a1]) => [*b1, _] = (a1.compress() << 10).to_be_bytes(),
-        ([], &[a1, a2]) => {
-            *pairs.last_mut().unwrap() =
-                ((a2.compress() << 5) | (a1.compress() << 10)).to_be_bytes();
+    match (packed.last_mut(), remainder) {
+        (_, []) => {}
+        (Some(pair), [a1]) => *pair = (a1.compress() << 10).to_be_bytes(),
+        (Some(pair), [a1, a2]) => {
+            *pair = ((a1.compress() << 10) | (a2.compress() << 5)).to_be_bytes();
         }
         _ => panic!(),
     }
 }
 
-fn unpack(peptide: &mut [Amino], packed: &[u8]) {
-    let (pairs, packed_remainder) = packed.as_chunks();
-    let (triplets, peptide_remainder) = peptide.as_chunks_mut();
-    for ([a1, a2, a3], &pair) in triplets.iter_mut().zip(pairs) {
+fn unpack(peptide: &mut [Amino], packed: &[[u8; 2]]) {
+    let (triplets, remainder) = peptide.as_chunks_mut();
+    for ([a1, a2, a3], &pair) in triplets.iter_mut().zip(packed) {
         let val = u16::from_be_bytes(pair);
         *a1 = Amino::decompress(val >> 10);
         *a2 = Amino::decompress(val >> 5);
         *a3 = Amino::decompress(val);
     }
-    match (peptide_remainder, packed_remainder) {
-        ([], []) => {}
-        ([a1], &[b1]) => {
-            *a1 = Amino::decompress(u16::from_be_bytes([b1, 0]) >> 10);
-        }
-        ([a1, a2], []) => {
-            let val = u16::from_be_bytes(*pairs.last().unwrap());
+    match (remainder, packed.last()) {
+        ([], _) => {}
+        ([a1], Some(pair)) => *a1 = Amino::decompress(u16::from_be_bytes(*pair) >> 10),
+        ([a1, a2], Some(pair)) => {
+            let val = u16::from_be_bytes(*pair);
             *a1 = Amino::decompress(val >> 10);
             *a2 = Amino::decompress(val >> 5);
         }
