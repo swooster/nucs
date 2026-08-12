@@ -1,3 +1,5 @@
+//! Types related to packed ambiguous peptides.
+
 use crate::{AmbiAmino, Seq};
 
 // Note on storage: There's not much room for packing `AmbiAmino`s... we can shave off one byte,
@@ -30,6 +32,12 @@ impl PackedAmbiPeptide {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Returns an iterator over the packed peptide.
+    #[must_use]
+    pub fn iter(&self) -> PackedAmbiPeptideIter<'_> {
+        self.into_iter()
     }
 }
 
@@ -77,6 +85,24 @@ impl From<&PackedAmbiPeptide> for Vec<AmbiAmino> {
     }
 }
 
+impl<'a> IntoIterator for &'a PackedAmbiPeptide {
+    type Item = AmbiAmino;
+    type IntoIter = PackedAmbiPeptideIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedAmbiPeptideIter(self.0.iter())
+    }
+}
+
+impl IntoIterator for PackedAmbiPeptide {
+    type Item = AmbiAmino;
+    type IntoIter = PackedAmbiPeptideIntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedAmbiPeptideIntoIter(self.0.into_iter())
+    }
+}
+
 /// Like [`[AmbiAmino; N]`](array), but takes 25% less space.
 ///
 /// # Examples
@@ -93,6 +119,14 @@ impl From<&PackedAmbiPeptide> for Vec<AmbiAmino> {
 /// ```
 #[derive(Clone, Copy)]
 pub struct PackedArrayAmbiPeptide<const N: usize>([[u8; 3]; N]);
+
+impl<const N: usize> PackedArrayAmbiPeptide<N> {
+    /// Returns an iterator over the packed peptide.
+    #[must_use]
+    pub fn iter(&self) -> PackedAmbiPeptideIter<'_> {
+        self.into_iter()
+    }
+}
 
 impl<const N: usize> From<Seq<[AmbiAmino; N]>> for PackedArrayAmbiPeptide<N> {
     fn from(ambi_peptide: Seq<[AmbiAmino; N]>) -> PackedArrayAmbiPeptide<N> {
@@ -142,6 +176,110 @@ impl<const N: usize> From<&PackedArrayAmbiPeptide<N>> for [AmbiAmino; N] {
     }
 }
 
+impl<'a, const N: usize> IntoIterator for &'a PackedArrayAmbiPeptide<N> {
+    type Item = AmbiAmino;
+    type IntoIter = PackedAmbiPeptideIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedAmbiPeptideIter(self.0.iter())
+    }
+}
+
+impl<const N: usize> IntoIterator for PackedArrayAmbiPeptide<N> {
+    type Item = AmbiAmino;
+    type IntoIter = PackedArrayAmbiPeptideIntoIter<N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedArrayAmbiPeptideIntoIter(self.0.into_iter())
+    }
+}
+
+/// Owned [`PackedAmbiPeptide`] iterator.
+#[derive(Clone)]
+pub struct PackedAmbiPeptideIntoIter(std::vec::IntoIter<[u8; 3]>);
+
+impl Iterator for PackedAmbiPeptideIntoIter {
+    type Item = AmbiAmino;
+
+    fn next(&mut self) -> Option<AmbiAmino> {
+        self.0.next().map(AmbiAmino::decompress)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for PackedAmbiPeptideIntoIter {
+    fn next_back(&mut self) -> Option<AmbiAmino> {
+        self.0.next_back().map(AmbiAmino::decompress)
+    }
+}
+
+impl ExactSizeIterator for PackedAmbiPeptideIntoIter {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// Owned [`PackedArrayAmbiPeptide`] iterator.
+#[derive(Clone)]
+pub struct PackedArrayAmbiPeptideIntoIter<const N: usize>(<[[u8; 3]; N] as IntoIterator>::IntoIter);
+
+impl<const N: usize> Iterator for PackedArrayAmbiPeptideIntoIter<N> {
+    type Item = AmbiAmino;
+
+    fn next(&mut self) -> Option<AmbiAmino> {
+        self.0.next().map(AmbiAmino::decompress)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<const N: usize> DoubleEndedIterator for PackedArrayAmbiPeptideIntoIter<N> {
+    fn next_back(&mut self) -> Option<AmbiAmino> {
+        self.0.next_back().map(AmbiAmino::decompress)
+    }
+}
+
+impl<const N: usize> ExactSizeIterator for PackedArrayAmbiPeptideIntoIter<N> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// Borrowed packed ambiguous peptide iterator.
+#[derive(Clone)]
+pub struct PackedAmbiPeptideIter<'a>(std::slice::Iter<'a, [u8; 3]>);
+
+impl Iterator for PackedAmbiPeptideIter<'_> {
+    type Item = AmbiAmino;
+
+    fn next(&mut self) -> Option<AmbiAmino> {
+        self.0.next().map(|&bytes| AmbiAmino::decompress(bytes))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl DoubleEndedIterator for PackedAmbiPeptideIter<'_> {
+    fn next_back(&mut self) -> Option<AmbiAmino> {
+        self.0
+            .next_back()
+            .map(|&bytes| AmbiAmino::decompress(bytes))
+    }
+}
+
+impl ExactSizeIterator for PackedAmbiPeptideIter<'_> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use proptest::proptest;
@@ -158,6 +296,17 @@ mod tests {
         assert_both_roundtrips(&[AmbiAmino::B, AmbiAmino::C]);
         assert_both_roundtrips(&[AmbiAmino::D, AmbiAmino::E, AmbiAmino::F]);
         assert_both_roundtrips(&AmbiAmino::arr(b"*SIGN"));
+    }
+
+    // This is just sanity-checking that things were hooked up to it correctly.
+    #[test]
+    fn smoke_test_iters() {
+        let ambi_peptide = AmbiAmino::seq(b"AMBI*PEPTIDE")[..].pack();
+        assert_eq!(Seq(Vec::from_iter(&ambi_peptide)), "AMBI*PEPTIDE");
+        assert_eq!(Seq(Vec::from_iter(ambi_peptide)), "AMBI*PEPTIDE");
+        let ambi_peptide = AmbiAmino::seq(b"AMBI*PEPTIDE").pack();
+        assert_eq!(Seq(Vec::from_iter(&ambi_peptide)), "AMBI*PEPTIDE");
+        assert_eq!(Seq(Vec::from_iter(ambi_peptide)), "AMBI*PEPTIDE");
     }
 
     proptest! {
