@@ -96,14 +96,9 @@ impl From<PackedDna> for Vec<Nuc> {
 
 impl From<&PackedDna> for Vec<Nuc> {
     fn from(packed_dna: &PackedDna) -> Vec<Nuc> {
-        if let Some(byte) = packed_dna.0.last() {
-            let len = 4 * (packed_dna.0.len() - 1) + (byte & 0b11) as usize;
-            let mut dna = vec![Nuc::default(); len];
-            unpack(&mut dna, &packed_dna.0);
-            dna
-        } else {
-            vec![]
-        }
+        let mut dna = vec![Nuc::default(); packed_dna.len()];
+        unpack(&mut dna, &packed_dna.0);
+        dna
     }
 }
 
