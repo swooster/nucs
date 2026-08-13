@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## Version 0.4.1 (2026-08-13)
 
 * `Seq` now has `complement` and `reverse_complement` methods. (#61)
 * `Seq` now supports `AsRef` and `AsMut`. (#67)
