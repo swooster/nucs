@@ -1,5 +1,6 @@
 //! Types related to packed DNA.
 
+use std::cmp::Ordering;
 use std::fmt::Formatter;
 
 use crate::{Nuc, Seq, iter::display};
@@ -127,6 +128,46 @@ impl IntoIterator for PackedDna {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedDnaIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
+impl PartialEq for PackedDna {
+    fn eq(&self, other: &Self) -> bool {
+        match (&*self.0, &*other.0) {
+            ([], [0]) | ([0], []) => true,
+            (x, y) => x == y,
+        }
+    }
+}
+
+impl Eq for PackedDna {}
+
+impl PartialOrd for PackedDna {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PackedDna {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (&*self.0, &*other.0) {
+            ([] | [0], [] | [0]) => Ordering::Equal,
+            ([] | [0], _) => Ordering::Less,
+            (_, [] | [0]) => Ordering::Greater,
+            ([x_bulk @ .., x_last], [y_bulk @ .., y_last]) => {
+                let common_prefix_len = x_bulk.len().min(y_bulk.len());
+                let (x_prefix, x_remainder) = x_bulk.split_at(common_prefix_len);
+                let (y_prefix, y_remainder) = y_bulk.split_at(common_prefix_len);
+                x_prefix
+                    .cmp(y_prefix)
+                    .then_with(|| match (x_remainder, y_remainder) {
+                        ([], []) => x_last.cmp(y_last),
+                        ([], [y_next, ..]) => (x_last & !0b11).cmp(y_next).then(Ordering::Less),
+                        ([x_next, ..], []) => x_next.cmp(&(y_last & !0b11)).then(Ordering::Greater),
+                        _ => unreachable!(),
+                    })
+            }
+        }
     }
 }
 
@@ -273,6 +314,35 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedArrayDnaIntoIter(UnpackingIter::new(0..N, self.0))
+    }
+}
+
+impl<const N: usize> PartialEq for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_ref().eq(other.0.as_ref())
+    }
+}
+
+impl<const N: usize> Eq for PackedArrayDna<N> where [(); N]: PackableArray {}
+
+impl<const N: usize> PartialOrd for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<const N: usize> Ord for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.as_ref().cmp(other.0.as_ref())
     }
 }
 
@@ -614,6 +684,78 @@ mod tests {
             let packed = PackedDna::from(&dna);
             assert_eq!(packed.len(), dna.len());
             assert_eq!(packed.is_empty(), dna.is_empty());
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_dna_ord(
+            dna1 in any_dna(0..50),
+            dna2 in any_dna(0..50),
+        ) {
+            let packed1 = PackedDna::from(&dna1);
+            let packed2 = PackedDna::from(&dna2);
+            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
+            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_array_dna1_ord(
+            dna1 in any::<[Nuc; 1]>(),
+            dna2 in any::<[Nuc; 1]>(),
+        ) {
+            let packed1 = PackedArrayDna::from(&dna1);
+            let packed2 = PackedArrayDna::from(&dna2);
+            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
+            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_array_dna2_ord(
+            dna1 in any::<[Nuc; 2]>(),
+            dna2 in any::<[Nuc; 2]>(),
+        ) {
+            let packed1 = PackedArrayDna::from(&dna1);
+            let packed2 = PackedArrayDna::from(&dna2);
+            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
+            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_array_dna3_ord(
+            dna1 in any::<[Nuc; 3]>(),
+            dna2 in any::<[Nuc; 3]>(),
+        ) {
+            let packed1 = PackedArrayDna::from(&dna1);
+            let packed2 = PackedArrayDna::from(&dna2);
+            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
+            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_array_dna4_ord(
+            dna1 in any::<[Nuc; 4]>(),
+            dna2 in any::<[Nuc; 4]>(),
+        ) {
+            let packed1 = PackedArrayDna::from(&dna1);
+            let packed2 = PackedArrayDna::from(&dna2);
+            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
+            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_array_dna5_ord(
+            dna1 in any::<[Nuc; 5]>(),
+            dna2 in any::<[Nuc; 5]>(),
+        ) {
+            let packed1 = PackedArrayDna::from(&dna1);
+            let packed2 = PackedArrayDna::from(&dna2);
+            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
+            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
         }
     }
 }
