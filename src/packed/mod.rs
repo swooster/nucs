@@ -10,87 +10,83 @@ pub mod ambipeptide;
 pub mod dna;
 pub mod peptide;
 
-pub use ambidna::{PackedAmbiDna, PackedArrayAmbiDna};
-pub use ambipeptide::{PackedAmbiPeptide, PackedArrayAmbiPeptide};
-pub use dna::{PackedArrayDna, PackedDna};
-pub use peptide::{PackedArrayPeptide, PackedPeptide};
-
 /// Names packed types in terms of what data they're packing.
 ///
-/// * [`Packed<[Nuc]>`](Self) is [`PackedDna`]
-/// * [`Packed<[Nuc; N]>`](Self) is [`PackedArrayDna<N>`]
-/// * [`Packed<[AmbiNuc]>`](Self) is [`PackedAmbiDna`]
-/// * [`Packed<[AmbiNuc; N]>`](Self) is [`PackedArrayAmbiDna<N>`]
-/// * [`Packed<[Amino]>`](Self) is [`PackedPeptide`]
-/// * [`Packed<[Amino; N]>`](Self) is [`PackedArrayPeptide<N>`]
-/// * [`Packed<[AmbiAmino]>`](Self) is [`PackedAmbiPeptide`]
-/// * [`Packed<[AmbiAmino; N]>`](Self) is [`PackedArrayAmbiPeptide<N>`]
+/// * [`Packed<[Nuc]>`](Self) is [`PackedDna`](dna::PackedDna)
+/// * [`Packed<[Nuc; N]>`](Self) is [`PackedArrayDna<N>`](dna::PackedArrayDna)
+/// * [`Packed<[AmbiNuc]>`](Self) is [`PackedAmbiDna`](ambidna::PackedAmbiDna)
+/// * [`Packed<[AmbiNuc; N]>`](Self) is [`PackedArrayAmbiDna<N>`](ambidna::PackedArrayAmbiDna)
+/// * [`Packed<[Amino]>`](Self) is [`PackedPeptide`](peptide::PackedPeptide)
+/// * [`Packed<[Amino; N]>`](Self) is [`PackedArrayPeptide<N>`](peptide::PackedArrayPeptide)
+/// * [`Packed<[AmbiAmino]>`](Self) is [`PackedAmbiPeptide`](ambipeptide::PackedAmbiPeptide)
+/// * [`Packed<[AmbiAmino; N]>`](Self) is
+///   [`PackedArrayAmbiPeptide<N>`](ambipeptide::PackedArrayAmbiPeptide)
 pub type Packed<T> = <T as Packable>::Packed;
 
 /// Determine packed version of type.
 ///
-/// This should work for all `[impl Symbol]`, and sufficiently short `[impl Symbol; N]`
-/// (currently, `N <= 64`).
+/// This should work for all concrete `[impl Symbol]`, and sufficiently short concrete
+/// `[impl Symbol; N]` (currently, `N <= 64`).
 pub trait Packable: ToOwned {
     /// Packed version of [`Self`].
     type Packed: Into<Self::Owned> + for<'a> From<&'a Self>;
 }
 
 impl Packable for [Nuc] {
-    type Packed = PackedDna;
+    type Packed = dna::PackedDna;
 }
 
 impl Packable for Vec<Nuc> {
-    type Packed = PackedDna;
+    type Packed = dna::PackedDna;
 }
 
 impl<const N: usize> Packable for [Nuc; N]
 where
     [(); N]: PackableArray,
 {
-    type Packed = PackedArrayDna<N>;
+    type Packed = dna::PackedArrayDna<N>;
 }
 
 impl Packable for [AmbiNuc] {
-    type Packed = PackedAmbiDna;
+    type Packed = ambidna::PackedAmbiDna;
 }
 
 impl Packable for Vec<AmbiNuc> {
-    type Packed = PackedAmbiDna;
+    type Packed = ambidna::PackedAmbiDna;
 }
 
 impl<const N: usize> Packable for [AmbiNuc; N]
 where
     [(); N]: PackableArray,
 {
-    type Packed = PackedArrayAmbiDna<N>;
+    type Packed = ambidna::PackedArrayAmbiDna<N>;
 }
 
 impl Packable for [Amino] {
-    type Packed = PackedPeptide;
+    type Packed = peptide::PackedPeptide;
 }
 
 impl Packable for Vec<Amino> {
-    type Packed = PackedPeptide;
+    type Packed = peptide::PackedPeptide;
 }
 
 impl<const N: usize> Packable for [Amino; N]
 where
     [(); N]: PackableArray,
 {
-    type Packed = PackedArrayPeptide<N>;
+    type Packed = peptide::PackedArrayPeptide<N>;
 }
 
 impl Packable for [AmbiAmino] {
-    type Packed = PackedAmbiPeptide;
+    type Packed = ambipeptide::PackedAmbiPeptide;
 }
 
 impl Packable for Vec<AmbiAmino> {
-    type Packed = PackedAmbiPeptide;
+    type Packed = ambipeptide::PackedAmbiPeptide;
 }
 
 impl<const N: usize> Packable for [AmbiAmino; N] {
-    type Packed = PackedArrayAmbiPeptide<N>;
+    type Packed = ambipeptide::PackedArrayAmbiPeptide<N>;
 }
 
 /// An array for which packed sizes are known.
