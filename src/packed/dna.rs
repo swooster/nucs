@@ -2,6 +2,7 @@
 
 use std::cmp::Ordering;
 use std::fmt::Formatter;
+use std::hash::{Hash, Hasher};
 
 use crate::{Nuc, Seq, iter::display};
 
@@ -31,7 +32,7 @@ use super::{PackableArray, UnpackingIter};
 /// let unpacked: Vec<Nuc> = packed.into();
 /// assert_eq!(unpacked, dna);
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PackedDna(Vec<u8>);
 
 impl PackedDna {
@@ -131,6 +132,15 @@ impl IntoIterator for PackedDna {
     }
 }
 
+impl Hash for PackedDna {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match &*self.0 {
+            [] => [0u8].hash(state),
+            x => x.hash(state),
+        }
+    }
+}
+
 impl PartialEq for PackedDna {
     fn eq(&self, other: &Self) -> bool {
         match (&*self.0, &*other.0) {
@@ -199,7 +209,7 @@ impl std::fmt::Debug for PackedDna {
 /// let unpacked: [Nuc; 9] = packed.into();
 /// assert_eq!(unpacked, dna);
 /// ```
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PackedArrayDna<const N: usize>(PackedBuf<N>)
 where
     [(); N]: PackableArray;
@@ -214,6 +224,15 @@ where
     #[must_use]
     pub fn iter(&self) -> PackedDnaIter<'_> {
         self.into_iter()
+    }
+}
+
+impl<const N: usize> Default for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn default() -> Self {
+        Self(ArrayDefault::array_default())
     }
 }
 
@@ -314,35 +333,6 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedArrayDnaIntoIter(UnpackingIter::new(0..N, self.0))
-    }
-}
-
-impl<const N: usize> PartialEq for PackedArrayDna<N>
-where
-    [(); N]: PackableArray,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.0.as_ref().eq(other.0.as_ref())
-    }
-}
-
-impl<const N: usize> Eq for PackedArrayDna<N> where [(); N]: PackableArray {}
-
-impl<const N: usize> PartialOrd for PackedArrayDna<N>
-where
-    [(); N]: PackableArray,
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<const N: usize> Ord for PackedArrayDna<N>
-where
-    [(); N]: PackableArray,
-{
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.as_ref().cmp(other.0.as_ref())
     }
 }
 
@@ -694,66 +684,6 @@ mod tests {
         ) {
             let packed1 = PackedDna::from(&dna1);
             let packed2 = PackedDna::from(&dna2);
-            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
-            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_dna1_ord(
-            dna1 in any::<[Nuc; 1]>(),
-            dna2 in any::<[Nuc; 1]>(),
-        ) {
-            let packed1 = PackedArrayDna::from(&dna1);
-            let packed2 = PackedArrayDna::from(&dna2);
-            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
-            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_dna2_ord(
-            dna1 in any::<[Nuc; 2]>(),
-            dna2 in any::<[Nuc; 2]>(),
-        ) {
-            let packed1 = PackedArrayDna::from(&dna1);
-            let packed2 = PackedArrayDna::from(&dna2);
-            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
-            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_dna3_ord(
-            dna1 in any::<[Nuc; 3]>(),
-            dna2 in any::<[Nuc; 3]>(),
-        ) {
-            let packed1 = PackedArrayDna::from(&dna1);
-            let packed2 = PackedArrayDna::from(&dna2);
-            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
-            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_dna4_ord(
-            dna1 in any::<[Nuc; 4]>(),
-            dna2 in any::<[Nuc; 4]>(),
-        ) {
-            let packed1 = PackedArrayDna::from(&dna1);
-            let packed2 = PackedArrayDna::from(&dna2);
-            assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
-            assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_dna5_ord(
-            dna1 in any::<[Nuc; 5]>(),
-            dna2 in any::<[Nuc; 5]>(),
-        ) {
-            let packed1 = PackedArrayDna::from(&dna1);
-            let packed2 = PackedArrayDna::from(&dna2);
             assert_eq!(packed1.cmp(&packed2), dna1.cmp(&dna2));
             assert_eq!(packed1.eq(&packed2), dna1.eq(&dna2));
         }

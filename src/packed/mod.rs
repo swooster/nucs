@@ -1,5 +1,6 @@
 //! Packed sequence types
 
+use std::hash::Hash;
 use std::ops::Range;
 
 use crate::{AmbiAmino, AmbiNuc, Amino, Nuc, packed::packable_array::ContiguousIterator};
@@ -96,6 +97,8 @@ impl<const N: usize> Packable for [AmbiAmino; N] {
 pub trait PackableArray: packable_array::Sealed {}
 
 pub(crate) mod packable_array {
+    use std::hash::Hash;
+
     /// Implementation details of [`PackedArray`].
     ///
     /// This uses GATs rather than constants to work around limitations in the current
@@ -108,21 +111,30 @@ pub(crate) mod packable_array {
     /// trait constraints into everything else, complicating the public APIs.
     pub trait Sealed {
         /// `[T; N.div_ceil(2)]`
-        type By2<T: Copy + Default>: AsRef<[T]>
+        type By2<T: Copy + Default + Eq + Ord + Hash>: AsRef<[T]>
             + AsMut<[T]>
             + Copy
+            + Eq
+            + Ord
+            + Hash
             + ArrayDefault
             + IntoIterator<Item = T, IntoIter: ContiguousIterator<SliceItem = T>>;
         /// `[T; N.div_ceil(3)]`
-        type By3<T: Copy + Default>: AsRef<[T]>
+        type By3<T: Copy + Default + Eq + Ord + Hash>: AsRef<[T]>
             + AsMut<[T]>
             + Copy
+            + Eq
+            + Ord
+            + Hash
             + ArrayDefault
             + IntoIterator<Item = T, IntoIter: ContiguousIterator<SliceItem = T>>;
         /// `[T; N.div_ceil(4)]`
-        type By4<T: Copy + Default>: AsRef<[T]>
+        type By4<T: Copy + Default + Eq + Ord + Hash>: AsRef<[T]>
             + AsMut<[T]>
             + Copy
+            + Eq
+            + Ord
+            + Hash
             + ArrayDefault
             + IntoIterator<Item = T, IntoIter: ContiguousIterator<SliceItem = T>>;
     }
@@ -202,9 +214,9 @@ macro_rules! div_table {
             impl PackableArray for [(); $d] {}
 
             impl packable_array::Sealed for [(); $d] {
-                type By2<T: Copy + Default> = [T; $q2];
-                type By3<T: Copy + Default> = [T; $q3];
-                type By4<T: Copy + Default> = [T; $q4];
+                type By2<T: Copy + Default + Eq + Ord + Hash> = [T; $q2];
+                type By3<T: Copy + Default + Eq + Ord + Hash> = [T; $q3];
+                type By4<T: Copy + Default + Eq + Ord + Hash> = [T; $q4];
             }
         )+
     };

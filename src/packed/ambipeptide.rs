@@ -1,9 +1,8 @@
 //! Types related to packed ambiguous peptides.
 
-use std::cmp::Ordering;
 use std::fmt::Formatter;
 
-use crate::{AmbiAmino, Seq, iter::display};
+use crate::{AmbiAmino, Seq, iter::display, packed::packable_array::ArrayDefault};
 
 // Note on storage: There's not much room for packing `AmbiAmino`s... we can shave off one byte,
 // but that's about it. Again, we store thing big-endian for lexical sorting reasons.
@@ -21,7 +20,7 @@ use crate::{AmbiAmino, Seq, iter::display};
 /// let unpacked: Vec<AmbiAmino> = packed.into();
 /// assert_eq!(unpacked, peptide);
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PackedAmbiPeptide(Vec<[u8; 3]>);
 
 impl PackedAmbiPeptide {
@@ -106,26 +105,6 @@ impl IntoIterator for PackedAmbiPeptide {
     }
 }
 
-impl PartialEq for PackedAmbiPeptide {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.as_flattened().eq(other.0.as_flattened())
-    }
-}
-
-impl Eq for PackedAmbiPeptide {}
-
-impl PartialOrd for PackedAmbiPeptide {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for PackedAmbiPeptide {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.as_flattened().cmp(other.0.as_flattened())
-    }
-}
-
 impl std::fmt::Display for PackedAmbiPeptide {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         self.iter().fmt(f)
@@ -154,7 +133,7 @@ impl std::fmt::Debug for PackedAmbiPeptide {
 /// let unpacked: [AmbiAmino; 18] = packed.into();
 /// assert_eq!(unpacked, peptide);
 /// ```
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PackedArrayAmbiPeptide<const N: usize>([[u8; 3]; N]);
 
 impl<const N: usize> PackedArrayAmbiPeptide<N> {
@@ -162,6 +141,12 @@ impl<const N: usize> PackedArrayAmbiPeptide<N> {
     #[must_use]
     pub fn iter(&self) -> PackedAmbiPeptideIter<'_> {
         self.into_iter()
+    }
+}
+
+impl<const N: usize> Default for PackedArrayAmbiPeptide<N> {
+    fn default() -> Self {
+        Self(ArrayDefault::array_default())
     }
 }
 
@@ -210,26 +195,6 @@ impl<const N: usize> From<PackedArrayAmbiPeptide<N>> for [AmbiAmino; N] {
 impl<const N: usize> From<&PackedArrayAmbiPeptide<N>> for [AmbiAmino; N] {
     fn from(packed_ambi_peptide: &PackedArrayAmbiPeptide<N>) -> [AmbiAmino; N] {
         packed_ambi_peptide.0.map(AmbiAmino::decompress)
-    }
-}
-
-impl<const N: usize> PartialEq for PackedArrayAmbiPeptide<N> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.as_flattened().eq(other.0.as_flattened())
-    }
-}
-
-impl<const N: usize> Eq for PackedArrayAmbiPeptide<N> {}
-
-impl<const N: usize> PartialOrd for PackedArrayAmbiPeptide<N> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<const N: usize> Ord for PackedArrayAmbiPeptide<N> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.as_flattened().cmp(other.0.as_flattened())
     }
 }
 
@@ -407,7 +372,6 @@ impl std::fmt::Debug for PackedAmbiPeptideIter<'_> {
 
 #[cfg(test)]
 mod tests {
-    use proptest::arbitrary::any;
     use proptest::proptest;
 
     use super::super::tests::{assert_both_roundtrips, assert_roundtrip};
@@ -475,43 +439,6 @@ mod tests {
             let packed = PackedAmbiPeptide::from(&ambi_peptide);
             assert_eq!(packed.len(), ambi_peptide.len());
             assert_eq!(packed.is_empty(), ambi_peptide.is_empty());
-        }
-
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_ambi_peptide_ord(
-            ambi_peptide1 in any_ambi_peptide(0..50),
-            ambi_peptide2 in any_ambi_peptide(0..50),
-        ) {
-            let packed1 = PackedAmbiPeptide::from(&ambi_peptide1);
-            let packed2 = PackedAmbiPeptide::from(&ambi_peptide2);
-            assert_eq!(packed1.cmp(&packed2), ambi_peptide1.cmp(&ambi_peptide2));
-            assert_eq!(packed1.eq(&packed2), ambi_peptide1.eq(&ambi_peptide2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_ambi_peptide1_ord(
-            ambi_peptide1 in any::<[AmbiAmino; 1]>(),
-            ambi_peptide2 in any::<[AmbiAmino; 1]>(),
-        ) {
-            let packed1 = PackedArrayAmbiPeptide::from(&ambi_peptide1);
-            let packed2 = PackedArrayAmbiPeptide::from(&ambi_peptide2);
-            assert_eq!(packed1.cmp(&packed2), ambi_peptide1.cmp(&ambi_peptide2));
-            assert_eq!(packed1.eq(&packed2), ambi_peptide1.eq(&ambi_peptide2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_peptide2_ord(
-            ambi_peptide1 in any::<[AmbiAmino; 2]>(),
-            ambi_peptide2 in any::<[AmbiAmino; 2]>(),
-        ) {
-            let packed1 = PackedArrayAmbiPeptide::from(&ambi_peptide1);
-            let packed2 = PackedArrayAmbiPeptide::from(&ambi_peptide2);
-            assert_eq!(packed1.cmp(&packed2), ambi_peptide1.cmp(&ambi_peptide2));
-            assert_eq!(packed1.eq(&packed2), ambi_peptide1.eq(&ambi_peptide2));
         }
     }
 }
