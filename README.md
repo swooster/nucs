@@ -88,7 +88,6 @@ assert_eq!(peptide, "JABBY");
 
 ## Planned functionality
 
-* Packing
 * FASTA parsing
 * Expansion of ambiguous k-mers into concrete k-mers
 * Base canonicalization
