@@ -4,7 +4,7 @@
 
 * `Seq` now has `complement` and `reverse_complement` methods. (#61)
 * `Seq` now supports `AsRef` and `AsMut`. (#67)
-* Add basic support for packed types! (#62, #66, #69, #70, #73, #74, #75)
+* Add basic support for packed types! (#62, #66, #69, #70, #73, #74, #75, #76)
 
 ## Version 0.4.0 (2026-07-28)
 

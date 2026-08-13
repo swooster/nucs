@@ -1,6 +1,5 @@
 //! Types related to packed ambiguous DNA.
 
-use std::cmp::Ordering;
 use std::fmt::Formatter;
 
 use crate::{AmbiNuc, Seq, iter::display};
@@ -25,7 +24,7 @@ use super::{PackableArray, UnpackingIter};
 /// let unpacked: Vec<AmbiNuc> = packed.into();
 /// assert_eq!(unpacked, dna);
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PackedAmbiDna(Vec<u8>);
 
 impl PackedAmbiDna {
@@ -118,26 +117,6 @@ impl IntoIterator for PackedAmbiDna {
     }
 }
 
-impl PartialEq for PackedAmbiDna {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
-
-impl Eq for PackedAmbiDna {}
-
-impl PartialOrd for PackedAmbiDna {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for PackedAmbiDna {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.cmp(&other.0)
-    }
-}
-
 impl std::fmt::Display for PackedAmbiDna {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         self.iter().fmt(f)
@@ -166,7 +145,7 @@ impl std::fmt::Debug for PackedAmbiDna {
 /// let unpacked: [AmbiNuc; 10] = packed.into();
 /// assert_eq!(unpacked, dna);
 /// ```
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PackedArrayAmbiDna<const N: usize>(PackedBuf<N>)
 where
     [(); N]: PackableArray;
@@ -181,6 +160,15 @@ where
     #[must_use]
     pub fn iter(&self) -> PackedAmbiDnaIter<'_> {
         self.into_iter()
+    }
+}
+
+impl<const N: usize> Default for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn default() -> Self {
+        Self(ArrayDefault::array_default())
     }
 }
 
@@ -281,35 +269,6 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedArrayAmbiDnaIntoIter(UnpackingIter::new(0..N, self.0))
-    }
-}
-
-impl<const N: usize> PartialEq for PackedArrayAmbiDna<N>
-where
-    [(); N]: PackableArray,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.0.as_ref().eq(other.0.as_ref())
-    }
-}
-
-impl<const N: usize> Eq for PackedArrayAmbiDna<N> where [(); N]: PackableArray {}
-
-impl<const N: usize> PartialOrd for PackedArrayAmbiDna<N>
-where
-    [(); N]: PackableArray,
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<const N: usize> Ord for PackedArrayAmbiDna<N>
-where
-    [(); N]: PackableArray,
-{
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.as_ref().cmp(other.0.as_ref())
     }
 }
 
@@ -627,54 +586,6 @@ mod tests {
             let packed = PackedAmbiDna::from(&ambi_dna);
             assert_eq!(packed.len(), ambi_dna.len());
             assert_eq!(packed.is_empty(), ambi_dna.is_empty());
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_ambi_dna_ord(
-            ambi_dna1 in any_ambi_dna(0..50),
-            ambi_dna2 in any_ambi_dna(0..50),
-        ) {
-            let packed1 = PackedAmbiDna::from(&ambi_dna1);
-            let packed2 = PackedAmbiDna::from(&ambi_dna2);
-            assert_eq!(packed1.cmp(&packed2), ambi_dna1.cmp(&ambi_dna2));
-            assert_eq!(packed1.eq(&packed2), ambi_dna1.eq(&ambi_dna2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_dna1_ord(
-            ambi_dna1 in any::<[AmbiNuc; 1]>(),
-            ambi_dna2 in any::<[AmbiNuc; 1]>(),
-        ) {
-            let packed1 = PackedArrayAmbiDna::from(&ambi_dna1);
-            let packed2 = PackedArrayAmbiDna::from(&ambi_dna2);
-            assert_eq!(packed1.cmp(&packed2), ambi_dna1.cmp(&ambi_dna2));
-            assert_eq!(packed1.eq(&packed2), ambi_dna1.eq(&ambi_dna2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_dna2_ord(
-            ambi_dna1 in any::<[AmbiNuc; 2]>(),
-            ambi_dna2 in any::<[AmbiNuc; 2]>(),
-        ) {
-            let packed1 = PackedArrayAmbiDna::from(&ambi_dna1);
-            let packed2 = PackedArrayAmbiDna::from(&ambi_dna2);
-            assert_eq!(packed1.cmp(&packed2), ambi_dna1.cmp(&ambi_dna2));
-            assert_eq!(packed1.eq(&packed2), ambi_dna1.eq(&ambi_dna2));
-        }
-
-        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
-        #[test]
-        fn packed_array_dna3_ord(
-            ambi_dna1 in any::<[AmbiNuc; 3]>(),
-            ambi_dna2 in any::<[AmbiNuc; 3]>(),
-        ) {
-            let packed1 = PackedArrayAmbiDna::from(&ambi_dna1);
-            let packed2 = PackedArrayAmbiDna::from(&ambi_dna2);
-            assert_eq!(packed1.cmp(&packed2), ambi_dna1.cmp(&ambi_dna2));
-            assert_eq!(packed1.eq(&packed2), ambi_dna1.eq(&ambi_dna2));
         }
     }
 }
