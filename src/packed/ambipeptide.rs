@@ -1,7 +1,9 @@
 //! Types related to packed ambiguous peptides.
 
+use std::cmp::Ordering;
 use std::fmt::Formatter;
 
+use super::RefCmp;
 use crate::{AmbiAmino, Seq, iter::display, packed::packable_array::ArrayDefault};
 
 // Note on storage: There's not much room for packing `AmbiAmino`s... we can shave off one byte,
@@ -105,6 +107,79 @@ impl IntoIterator for PackedAmbiPeptide {
     }
 }
 
+impl<T: PartialEq<AmbiAmino>, const M: usize> PartialEq<[T; M]> for PackedAmbiPeptide {
+    fn eq(&self, other: &[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const M: usize> PartialOrd<[T; M]> for PackedAmbiPeptide {
+    fn partial_cmp(&self, other: &[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>, const M: usize> PartialEq<&mut [T; M]> for PackedAmbiPeptide {
+    fn eq(&self, other: &&mut [T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const M: usize> PartialOrd<&mut [T; M]> for PackedAmbiPeptide {
+    fn partial_cmp(&self, other: &&mut [T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>, const M: usize> PartialEq<&[T; M]> for PackedAmbiPeptide {
+    fn eq(&self, other: &&[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const M: usize> PartialOrd<&[T; M]> for PackedAmbiPeptide {
+    fn partial_cmp(&self, other: &&[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>> PartialEq<Vec<T>> for PackedAmbiPeptide {
+    fn eq(&self, other: &Vec<T>) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>> PartialOrd<Vec<T>> for PackedAmbiPeptide {
+    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>> PartialEq<&mut [T]> for PackedAmbiPeptide {
+    fn eq(&self, other: &&mut [T]) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>> PartialOrd<&mut [T]> for PackedAmbiPeptide {
+    fn partial_cmp(&self, other: &&mut [T]) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>> PartialEq<&[T]> for PackedAmbiPeptide {
+    fn eq(&self, other: &&[T]) -> bool {
+        // Without `TrustedLen` we don't benefit from stdlib's length-check specializations.
+        self.len() == other.len() && self.iter().map(RefCmp).eq(*other)
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>> PartialOrd<&[T]> for PackedAmbiPeptide {
+    fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
+        self.iter().map(RefCmp).partial_cmp(*other)
+    }
+}
+
 impl std::fmt::Display for PackedAmbiPeptide {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         self.iter().fmt(f)
@@ -195,6 +270,91 @@ impl<const N: usize> From<PackedArrayAmbiPeptide<N>> for [AmbiAmino; N] {
 impl<const N: usize> From<&PackedArrayAmbiPeptide<N>> for [AmbiAmino; N] {
     fn from(packed_ambi_peptide: &PackedArrayAmbiPeptide<N>) -> [AmbiAmino; N] {
         packed_ambi_peptide.0.map(AmbiAmino::decompress)
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>, const N: usize, const M: usize> PartialEq<[T; M]>
+    for PackedArrayAmbiPeptide<N>
+{
+    fn eq(&self, other: &[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const N: usize, const M: usize> PartialOrd<[T; M]>
+    for PackedArrayAmbiPeptide<N>
+{
+    fn partial_cmp(&self, other: &[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>, const N: usize, const M: usize> PartialEq<&mut [T; M]>
+    for PackedArrayAmbiPeptide<N>
+{
+    fn eq(&self, other: &&mut [T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const N: usize, const M: usize> PartialOrd<&mut [T; M]>
+    for PackedArrayAmbiPeptide<N>
+{
+    fn partial_cmp(&self, other: &&mut [T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>, const N: usize, const M: usize> PartialEq<&[T; M]>
+    for PackedArrayAmbiPeptide<N>
+{
+    fn eq(&self, other: &&[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const N: usize, const M: usize> PartialOrd<&[T; M]>
+    for PackedArrayAmbiPeptide<N>
+{
+    fn partial_cmp(&self, other: &&[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>, const N: usize> PartialEq<Vec<T>> for PackedArrayAmbiPeptide<N> {
+    fn eq(&self, other: &Vec<T>) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const N: usize> PartialOrd<Vec<T>> for PackedArrayAmbiPeptide<N> {
+    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>, const N: usize> PartialEq<&mut [T]> for PackedArrayAmbiPeptide<N> {
+    fn eq(&self, other: &&mut [T]) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const N: usize> PartialOrd<&mut [T]> for PackedArrayAmbiPeptide<N> {
+    fn partial_cmp(&self, other: &&mut [T]) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<AmbiAmino>, const N: usize> PartialEq<&[T]> for PackedArrayAmbiPeptide<N> {
+    fn eq(&self, other: &&[T]) -> bool {
+        // Without `TrustedLen` we don't benefit from stdlib's length-check specializations.
+        N == other.len() && self.iter().map(RefCmp).eq(*other)
+    }
+}
+
+impl<T: PartialOrd<AmbiAmino>, const N: usize> PartialOrd<&[T]> for PackedArrayAmbiPeptide<N> {
+    fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
+        self.iter().map(RefCmp).partial_cmp(*other)
     }
 }
 
@@ -372,10 +532,11 @@ impl std::fmt::Debug for PackedAmbiPeptideIter<'_> {
 
 #[cfg(test)]
 mod tests {
+    use proptest::arbitrary::any;
     use proptest::proptest;
 
     use super::super::tests::{assert_both_roundtrips, assert_roundtrip};
-    use crate::proptest::any_ambi_peptide;
+    use crate::proptest::{any_ambi_peptide, any_peptide};
 
     use super::*;
 
@@ -439,6 +600,48 @@ mod tests {
             let packed = PackedAmbiPeptide::from(&ambi_peptide);
             assert_eq!(packed.len(), ambi_peptide.len());
             assert_eq!(packed.is_empty(), ambi_peptide.is_empty());
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_ambi_peptide_ord_vs_slice(
+            ambi_peptide1 in any_ambi_peptide(0..50),
+            ambi_peptide2 in any_ambi_peptide(0..50),
+        ) {
+            let packed1 = PackedAmbiPeptide::from(&ambi_peptide1);
+            assert_eq!(
+                packed1.partial_cmp(&ambi_peptide2),
+                ambi_peptide1.partial_cmp(&ambi_peptide2),
+            );
+            assert_eq!(packed1.eq(&ambi_peptide2), ambi_peptide1.eq(&ambi_peptide2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_ambi_peptide_ord_vs_concrete_slice(
+            ambi_peptide1 in any_ambi_peptide(0..50),
+            peptide2 in any_peptide(0..50),
+        ) {
+            let packed1 = PackedAmbiPeptide::from(&ambi_peptide1);
+            assert_eq!(
+                packed1.partial_cmp(&peptide2),
+                ambi_peptide1.iter().partial_cmp(&peptide2)
+            );
+            assert_eq!(packed1.eq(&peptide2), ambi_peptide1.eq(&peptide2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_ambi_peptide5_ord(
+            ambi_peptide1 in any::<[AmbiAmino; 5]>(),
+            ambi_peptide2 in any_ambi_peptide(0..10),
+        ) {
+            let packed1 = PackedArrayAmbiPeptide::from(&ambi_peptide1);
+            assert_eq!(
+                packed1.partial_cmp(&ambi_peptide2),
+                ambi_peptide1.as_slice().partial_cmp(&ambi_peptide2),
+            );
+            assert_eq!(packed1.eq(&ambi_peptide2), ambi_peptide1.as_slice().eq(&ambi_peptide2));
         }
     }
 }

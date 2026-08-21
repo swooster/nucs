@@ -1,11 +1,12 @@
 //! Types related to packed ambiguous DNA.
 
+use std::cmp::Ordering;
 use std::fmt::Formatter;
 
 use crate::{AmbiNuc, Seq, iter::display};
 
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
-use super::{PackableArray, UnpackingIter};
+use super::{PackableArray, RefCmp, UnpackingIter};
 
 // Note on storage: AmbiNucs are packed big-endian so naive lexical sorting of bytes is correct.
 //
@@ -114,6 +115,79 @@ impl IntoIterator for PackedAmbiDna {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedAmbiDnaIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const M: usize> PartialEq<[T; M]> for PackedAmbiDna {
+    fn eq(&self, other: &[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const M: usize> PartialOrd<[T; M]> for PackedAmbiDna {
+    fn partial_cmp(&self, other: &[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const M: usize> PartialEq<&mut [T; M]> for PackedAmbiDna {
+    fn eq(&self, other: &&mut [T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const M: usize> PartialOrd<&mut [T; M]> for PackedAmbiDna {
+    fn partial_cmp(&self, other: &&mut [T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const M: usize> PartialEq<&[T; M]> for PackedAmbiDna {
+    fn eq(&self, other: &&[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const M: usize> PartialOrd<&[T; M]> for PackedAmbiDna {
+    fn partial_cmp(&self, other: &&[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>> PartialEq<Vec<T>> for PackedAmbiDna {
+    fn eq(&self, other: &Vec<T>) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>> PartialOrd<Vec<T>> for PackedAmbiDna {
+    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>> PartialEq<&mut [T]> for PackedAmbiDna {
+    fn eq(&self, other: &&mut [T]) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>> PartialOrd<&mut [T]> for PackedAmbiDna {
+    fn partial_cmp(&self, other: &&mut [T]) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>> PartialEq<&[T]> for PackedAmbiDna {
+    fn eq(&self, other: &&[T]) -> bool {
+        // Without `TrustedLen` we don't benefit from stdlib's length-check specializations.
+        self.len() == other.len() && self.iter().map(RefCmp).eq(*other)
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>> PartialOrd<&[T]> for PackedAmbiDna {
+    fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
+        self.iter().map(RefCmp).partial_cmp(*other)
     }
 }
 
@@ -269,6 +343,121 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedArrayAmbiDnaIntoIter(UnpackingIter::new(0..N, self.0))
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const N: usize, const M: usize> PartialEq<[T; M]>
+    for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const N: usize, const M: usize> PartialOrd<[T; M]>
+    for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const N: usize, const M: usize> PartialEq<&mut [T; M]>
+    for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &&mut [T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const N: usize, const M: usize> PartialOrd<&mut [T; M]>
+    for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &&mut [T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const N: usize, const M: usize> PartialEq<&[T; M]>
+    for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &&[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const N: usize, const M: usize> PartialOrd<&[T; M]>
+    for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &&[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const N: usize> PartialEq<Vec<T>> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &Vec<T>) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const N: usize> PartialOrd<Vec<T>> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const N: usize> PartialEq<&mut [T]> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &&mut [T]) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const N: usize> PartialOrd<&mut [T]> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &&mut [T]) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<AmbiNuc>, const N: usize> PartialEq<&[T]> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &&[T]) -> bool {
+        // Without `TrustedLen` we don't benefit from stdlib's length-check specializations.
+        N == other.len() && self.iter().map(RefCmp).eq(*other)
+    }
+}
+
+impl<T: PartialOrd<AmbiNuc>, const N: usize> PartialOrd<&[T]> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
+        self.iter().map(RefCmp).partial_cmp(*other)
     }
 }
 
@@ -494,7 +683,7 @@ mod tests {
     use proptest::{arbitrary::any, proptest};
 
     use super::super::tests::{assert_both_roundtrips, assert_roundtrip};
-    use crate::proptest::any_ambi_dna;
+    use crate::proptest::{any_ambi_dna, any_dna};
 
     use super::*;
 
@@ -586,6 +775,39 @@ mod tests {
             let packed = PackedAmbiDna::from(&ambi_dna);
             assert_eq!(packed.len(), ambi_dna.len());
             assert_eq!(packed.is_empty(), ambi_dna.is_empty());
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_ambi_dna_ord_vs_slice(
+            ambi_dna1 in any_ambi_dna(0..50),
+            ambi_dna2 in any_ambi_dna(0..50),
+        ) {
+            let packed1 = PackedAmbiDna::from(&ambi_dna1);
+            assert_eq!(packed1.partial_cmp(&ambi_dna2), ambi_dna1.partial_cmp(&ambi_dna2));
+            assert_eq!(packed1.eq(&ambi_dna2), ambi_dna1.eq(&ambi_dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_ambi_dna_ord_vs_concrete_slice(
+            ambi_dna1 in any_ambi_dna(0..50),
+            dna2 in any_dna(0..50),
+        ) {
+            let packed1 = PackedAmbiDna::from(&ambi_dna1);
+            assert_eq!(packed1.partial_cmp(&dna2), ambi_dna1.iter().partial_cmp(&dna2));
+            assert_eq!(packed1.eq(&dna2), ambi_dna1.eq(&dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_ambi_dna5_ord(
+            ambi_dna1 in any::<[AmbiNuc; 5]>(),
+            ambi_dna2 in any_ambi_dna(0..10),
+        ) {
+            let packed1 = PackedArrayAmbiDna::from(&ambi_dna1);
+            assert_eq!(packed1.partial_cmp(&ambi_dna2), ambi_dna1.as_slice().partial_cmp(&ambi_dna2));
+            assert_eq!(packed1.eq(&ambi_dna2), ambi_dna1.as_slice().eq(&ambi_dna2));
         }
     }
 }
