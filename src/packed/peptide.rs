@@ -1,11 +1,12 @@
 //! Types related to packed ambiguous peptides.
 
+use std::cmp::Ordering;
 use std::fmt::Formatter;
 
 use crate::{Amino, Seq, iter::display};
 
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
-use super::{PackableArray, UnpackingIter};
+use super::{PackableArray, RefCmp, UnpackingIter};
 
 // Note on storage: Aminos are packed big-endian so naive lexical sorting of bytes is correct.
 // The [u8; 2] themselves are big-endian u16s, for the same reason.
@@ -117,6 +118,79 @@ impl IntoIterator for PackedPeptide {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedPeptideIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
+impl<T: PartialEq<Amino>, const M: usize> PartialEq<[T; M]> for PackedPeptide {
+    fn eq(&self, other: &[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<Amino>, const M: usize> PartialOrd<[T; M]> for PackedPeptide {
+    fn partial_cmp(&self, other: &[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<Amino>, const M: usize> PartialEq<&mut [T; M]> for PackedPeptide {
+    fn eq(&self, other: &&mut [T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<Amino>, const M: usize> PartialOrd<&mut [T; M]> for PackedPeptide {
+    fn partial_cmp(&self, other: &&mut [T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<Amino>, const M: usize> PartialEq<&[T; M]> for PackedPeptide {
+    fn eq(&self, other: &&[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<Amino>, const M: usize> PartialOrd<&[T; M]> for PackedPeptide {
+    fn partial_cmp(&self, other: &&[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<Amino>> PartialEq<Vec<T>> for PackedPeptide {
+    fn eq(&self, other: &Vec<T>) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<Amino>> PartialOrd<Vec<T>> for PackedPeptide {
+    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<Amino>> PartialEq<&mut [T]> for PackedPeptide {
+    fn eq(&self, other: &&mut [T]) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<Amino>> PartialOrd<&mut [T]> for PackedPeptide {
+    fn partial_cmp(&self, other: &&mut [T]) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<Amino>> PartialEq<&[T]> for PackedPeptide {
+    fn eq(&self, other: &&[T]) -> bool {
+        // Without `TrustedLen` we don't benefit from stdlib's length-check specializations.
+        self.len() == other.len() && self.iter().map(RefCmp).eq(*other)
+    }
+}
+
+impl<T: PartialOrd<Amino>> PartialOrd<&[T]> for PackedPeptide {
+    fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
+        self.iter().map(RefCmp).partial_cmp(*other)
     }
 }
 
@@ -272,6 +346,121 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedArrayPeptideIntoIter(UnpackingIter::new(0..N, self.0))
+    }
+}
+
+impl<T: PartialEq<Amino>, const N: usize, const M: usize> PartialEq<[T; M]>
+    for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<Amino>, const N: usize, const M: usize> PartialOrd<[T; M]>
+    for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<Amino>, const N: usize, const M: usize> PartialEq<&mut [T; M]>
+    for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &&mut [T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<Amino>, const N: usize, const M: usize> PartialOrd<&mut [T; M]>
+    for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &&mut [T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<Amino>, const N: usize, const M: usize> PartialEq<&[T; M]>
+    for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &&[T; M]) -> bool {
+        self.eq(&other.as_slice())
+    }
+}
+
+impl<T: PartialOrd<Amino>, const N: usize, const M: usize> PartialOrd<&[T; M]>
+    for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &&[T; M]) -> Option<Ordering> {
+        self.partial_cmp(&other.as_slice())
+    }
+}
+
+impl<T: PartialEq<Amino>, const N: usize> PartialEq<Vec<T>> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &Vec<T>) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<Amino>, const N: usize> PartialOrd<Vec<T>> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<Amino>, const N: usize> PartialEq<&mut [T]> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &&mut [T]) -> bool {
+        self.eq(&&**other)
+    }
+}
+
+impl<T: PartialOrd<Amino>, const N: usize> PartialOrd<&mut [T]> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &&mut [T]) -> Option<Ordering> {
+        self.partial_cmp(&&**other)
+    }
+}
+
+impl<T: PartialEq<Amino>, const N: usize> PartialEq<&[T]> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &&[T]) -> bool {
+        // Without `TrustedLen` we don't benefit from stdlib's length-check specializations.
+        N == other.len() && self.iter().map(RefCmp).eq(*other)
+    }
+}
+
+impl<T: PartialOrd<Amino>, const N: usize> PartialOrd<&[T]> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
+        self.iter().map(RefCmp).partial_cmp(*other)
     }
 }
 
@@ -507,7 +696,7 @@ mod tests {
     use proptest::{arbitrary::any, proptest};
 
     use super::super::tests::{assert_both_roundtrips, assert_roundtrip};
-    use crate::proptest::any_peptide;
+    use crate::proptest::{any_ambi_peptide, any_peptide};
 
     use super::*;
 
@@ -607,6 +796,39 @@ mod tests {
             let packed = PackedPeptide::from(&peptide);
             assert_eq!(packed.len(), peptide.len());
             assert_eq!(packed.is_empty(), peptide.is_empty());
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_peptide_ord_vs_slice(
+            peptide1 in any_peptide(0..50),
+            peptide2 in any_peptide(0..50),
+        ) {
+            let packed1 = PackedPeptide::from(&peptide1);
+            assert_eq!(packed1.partial_cmp(&peptide2), peptide1.partial_cmp(&peptide2));
+            assert_eq!(packed1.eq(&peptide2), peptide1.eq(&peptide2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_peptide_ord_vs_ambi_slice(
+            peptide1 in any_peptide(0..50),
+            ambi_peptide2 in any_ambi_peptide(0..50),
+        ) {
+            let packed1 = PackedPeptide::from(&peptide1);
+            assert_eq!(packed1.partial_cmp(&ambi_peptide2), peptide1.iter().partial_cmp(&ambi_peptide2));
+            assert_eq!(packed1.eq(&ambi_peptide2), peptide1.eq(&ambi_peptide2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn packed_peptide5_ord(
+            peptide1 in any::<[Amino; 5]>(),
+            peptide2 in any_peptide(0..10),
+        ) {
+            let packed1 = PackedArrayPeptide::from(&peptide1);
+            assert_eq!(packed1.partial_cmp(&peptide2), peptide1.as_slice().partial_cmp(&peptide2));
+            assert_eq!(packed1.eq(&peptide2), peptide1.as_slice().eq(&peptide2));
         }
     }
 }

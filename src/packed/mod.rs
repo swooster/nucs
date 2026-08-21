@@ -1,5 +1,6 @@
 //! Packed sequence types
 
+use std::cmp::Ordering;
 use std::hash::Hash;
 use std::ops::Range;
 
@@ -388,6 +389,22 @@ where
         let skipped = (MAX - STEP - self.front_shift + self.back_shift) / STEP;
         // We use saturating sub because we don't reset the shifts on exhaustion.
         ((MAX / STEP) as usize * self.iter.len()).saturating_sub(skipped as usize)
+    }
+}
+
+// Allows using [`Iterator::eq`] and [`Iterator::partial_cmp`] to compare `T` with `&U`
+// when `U: PartialOrd<T>`.
+struct RefCmp<T>(T);
+
+impl<T, U: PartialEq<T>> PartialEq<&U> for RefCmp<T> {
+    fn eq(&self, other: &&U) -> bool {
+        other.eq(&&self.0)
+    }
+}
+
+impl<T, U: PartialOrd<T>> PartialOrd<&U> for RefCmp<T> {
+    fn partial_cmp(&self, other: &&U) -> Option<Ordering> {
+        other.partial_cmp(&&self.0).map(Ordering::reverse)
     }
 }
 

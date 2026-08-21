@@ -1,5 +1,9 @@
 # Releases
 
+## Unreleased
+
+* Packed types now support comparison to slices, arrays and `Vec`s. (#79)
+
 ## Version 0.4.1 (2026-08-13)
 
 * `Seq` now has `complement` and `reverse_complement` methods. (#61)
