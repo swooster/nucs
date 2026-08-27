@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
 
+use crate::symbol::iter_symbols;
 use crate::{Nuc, Seq, iter::display};
 
 use super::ambidna::{PackedAmbiDna, PackedArrayAmbiDna};
@@ -302,6 +303,18 @@ impl<T: PartialEq<Nuc>> PartialEq<&[T]> for PackedDna {
 impl<T: PartialOrd<Nuc>> PartialOrd<&[T]> for PackedDna {
     fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
         self.iter().map(RefCmp).partial_cmp(*other)
+    }
+}
+
+impl PartialEq<&str> for PackedDna {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl PartialEq<str> for PackedDna {
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
     }
 }
 
@@ -624,6 +637,24 @@ where
     }
 }
 
+impl<const N: usize> PartialEq<&str> for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl<const N: usize> PartialEq<str> for PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
+    }
+}
+
 impl<const N: usize> std::fmt::Display for PackedArrayDna<N>
 where
     [(); N]: PackableArray,
@@ -899,6 +930,14 @@ mod tests {
         let dna = Nuc::seq(b"ACGT").pack();
         assert_eq!(Seq(Vec::from_iter(&dna)), "ACGT");
         assert_eq!(Seq(Vec::from_iter(dna)), "ACGT");
+    }
+
+    #[test]
+    fn packed_dna_eq_str() {
+        let dna = Nuc::seq(b"ACGT")[..].pack();
+        assert_eq!(dna, "ACGT");
+        let dna = Nuc::seq(b"ACGT").pack();
+        assert_eq!(dna, "ACGT");
     }
 
     #[test]

@@ -3,9 +3,11 @@
 use std::cmp::Ordering;
 use std::fmt::Formatter;
 
+use crate::symbol::iter_symbols;
+use crate::{AmbiAmino, Seq, iter::display, packed::packable_array::ArrayDefault};
+
 use super::peptide::{PackedArrayPeptide, PackedPeptide};
 use super::{PackableArray, RefCmp};
-use crate::{AmbiAmino, Seq, iter::display, packed::packable_array::ArrayDefault};
 
 // Note on storage: There's not much room for packing `AmbiAmino`s... we can shave off one byte,
 // but that's about it. Again, we store thing big-endian for lexical sorting reasons.
@@ -222,6 +224,18 @@ impl<T: PartialEq<AmbiAmino>> PartialEq<&[T]> for PackedAmbiPeptide {
 impl<T: PartialOrd<AmbiAmino>> PartialOrd<&[T]> for PackedAmbiPeptide {
     fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
         self.iter().map(RefCmp).partial_cmp(*other)
+    }
+}
+
+impl PartialEq<&str> for PackedAmbiPeptide {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl PartialEq<str> for PackedAmbiPeptide {
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
     }
 }
 
@@ -445,6 +459,18 @@ impl<T: PartialOrd<AmbiAmino>, const N: usize> PartialOrd<&[T]> for PackedArrayA
     }
 }
 
+impl<const N: usize> PartialEq<&str> for PackedArrayAmbiPeptide<N> {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl<const N: usize> PartialEq<str> for PackedArrayAmbiPeptide<N> {
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
+    }
+}
+
 impl<const N: usize> std::fmt::Display for PackedArrayAmbiPeptide<N> {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         self.iter().fmt(f)
@@ -645,6 +671,14 @@ mod tests {
         let ambi_peptide = AmbiAmino::seq(b"AMBI*PEPTIDE").pack();
         assert_eq!(Seq(Vec::from_iter(&ambi_peptide)), "AMBI*PEPTIDE");
         assert_eq!(Seq(Vec::from_iter(ambi_peptide)), "AMBI*PEPTIDE");
+    }
+
+    #[test]
+    fn packed_ambi_peptide_eq_str() {
+        let dna = AmbiAmino::seq(b"AMBI*PEPTIDE")[..].pack();
+        assert_eq!(dna, "AMBI*PEPTIDE");
+        let dna = AmbiAmino::seq(b"AMBI*PEPTIDE").pack();
+        assert_eq!(dna, "AMBI*PEPTIDE");
     }
 
     #[test]
