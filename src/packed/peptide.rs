@@ -5,6 +5,7 @@ use std::fmt::Formatter;
 
 use crate::{Amino, Seq, iter::display};
 
+use super::ambipeptide::{PackedAmbiPeptide, PackedArrayAmbiPeptide};
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 use super::{PackableArray, RefCmp, UnpackingIter};
 
@@ -118,6 +119,50 @@ impl IntoIterator for PackedPeptide {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedPeptideIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
+impl<const N: usize> PartialEq<PackedArrayPeptide<N>> for PackedPeptide
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedArrayPeptide<N>) -> bool {
+        self.0.as_flattened().eq(other.0.as_ref().as_flattened())
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedArrayPeptide<N>> for PackedPeptide
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedArrayPeptide<N>) -> Option<Ordering> {
+        self.0
+            .as_flattened()
+            .partial_cmp(other.0.as_ref().as_flattened())
+    }
+}
+
+impl PartialEq<PackedAmbiPeptide> for PackedPeptide {
+    fn eq(&self, other: &PackedAmbiPeptide) -> bool {
+        self.iter().eq(other.iter())
+    }
+}
+
+impl PartialOrd<PackedAmbiPeptide> for PackedPeptide {
+    fn partial_cmp(&self, other: &PackedAmbiPeptide) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+
+impl<const N: usize> PartialEq<PackedArrayAmbiPeptide<N>> for PackedPeptide {
+    fn eq(&self, other: &PackedArrayAmbiPeptide<N>) -> bool {
+        self.iter().eq(other.iter())
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedArrayAmbiPeptide<N>> for PackedPeptide {
+    fn partial_cmp(&self, other: &PackedArrayAmbiPeptide<N>) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
     }
 }
 
@@ -346,6 +391,60 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedArrayPeptideIntoIter(UnpackingIter::new(0..N, self.0))
+    }
+}
+
+impl<const N: usize> PartialEq<PackedPeptide> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedPeptide) -> bool {
+        other == self
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedPeptide> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedPeptide) -> Option<Ordering> {
+        other.partial_cmp(self).map(Ordering::reverse)
+    }
+}
+
+impl<const N: usize> PartialEq<PackedAmbiPeptide> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedAmbiPeptide) -> bool {
+        self.iter().eq(other.iter())
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedAmbiPeptide> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedAmbiPeptide) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
+    }
+}
+
+impl<const N: usize> PartialEq<PackedArrayAmbiPeptide<N>> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedArrayAmbiPeptide<N>) -> bool {
+        self.iter().eq(other.iter())
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedArrayAmbiPeptide<N>> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedArrayAmbiPeptide<N>) -> Option<Ordering> {
+        self.iter().partial_cmp(other.iter())
     }
 }
 

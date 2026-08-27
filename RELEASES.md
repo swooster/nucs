@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-* Packed types now support comparison to slices, arrays and `Vec`s. (#79)
+* Packed types now support comparison to slices, arrays and `Vec`s and each other. (#79, #80)
 
 ## Version 0.4.1 (2026-08-13)
 

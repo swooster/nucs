@@ -5,6 +5,7 @@ use std::fmt::Formatter;
 
 use crate::{AmbiNuc, Seq, iter::display};
 
+use super::dna::{PackedArrayDna, PackedDna};
 use super::packable_array::{ArrayDefault, Sealed as ArrayDivide};
 use super::{PackableArray, RefCmp, UnpackingIter};
 
@@ -115,6 +116,54 @@ impl IntoIterator for PackedAmbiDna {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedAmbiDnaIntoIter(UnpackingIter::new(0..self.len(), self.0))
+    }
+}
+
+impl<const N: usize> PartialEq<PackedArrayAmbiDna<N>> for PackedAmbiDna
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedArrayAmbiDna<N>) -> bool {
+        self.0.eq(other.0.as_ref())
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedArrayAmbiDna<N>> for PackedAmbiDna
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedArrayAmbiDna<N>) -> Option<Ordering> {
+        self.0.as_slice().partial_cmp(other.0.as_ref())
+    }
+}
+
+impl PartialEq<PackedDna> for PackedAmbiDna {
+    fn eq(&self, other: &PackedDna) -> bool {
+        other == self
+    }
+}
+
+impl PartialOrd<PackedDna> for PackedAmbiDna {
+    fn partial_cmp(&self, other: &PackedDna) -> Option<Ordering> {
+        other.partial_cmp(self).map(Ordering::reverse)
+    }
+}
+
+impl<const N: usize> PartialEq<PackedArrayDna<N>> for PackedAmbiDna
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedArrayDna<N>) -> bool {
+        other == self
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedArrayDna<N>> for PackedAmbiDna
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedArrayDna<N>) -> Option<Ordering> {
+        other.partial_cmp(self).map(Ordering::reverse)
     }
 }
 
@@ -343,6 +392,60 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedArrayAmbiDnaIntoIter(UnpackingIter::new(0..N, self.0))
+    }
+}
+
+impl<const N: usize> PartialEq<PackedAmbiDna> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedAmbiDna) -> bool {
+        other == self
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedAmbiDna> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedAmbiDna) -> Option<Ordering> {
+        other.partial_cmp(self).map(Ordering::reverse)
+    }
+}
+
+impl<const N: usize> PartialEq<PackedDna> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedDna) -> bool {
+        other == self
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedDna> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedDna) -> Option<Ordering> {
+        other.partial_cmp(self).map(Ordering::reverse)
+    }
+}
+
+impl<const N: usize> PartialEq<PackedArrayDna<N>> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, other: &PackedArrayDna<N>) -> bool {
+        other == self
+    }
+}
+
+impl<const N: usize> PartialOrd<PackedArrayDna<N>> for PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    fn partial_cmp(&self, other: &PackedArrayDna<N>) -> Option<Ordering> {
+        other.partial_cmp(self).map(Ordering::reverse)
     }
 }
 
