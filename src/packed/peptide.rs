@@ -3,6 +3,7 @@
 use std::cmp::Ordering;
 use std::fmt::Formatter;
 
+use crate::symbol::iter_symbols;
 use crate::{Amino, Seq, iter::display};
 
 use super::ambipeptide::{PackedAmbiPeptide, PackedArrayAmbiPeptide};
@@ -236,6 +237,18 @@ impl<T: PartialEq<Amino>> PartialEq<&[T]> for PackedPeptide {
 impl<T: PartialOrd<Amino>> PartialOrd<&[T]> for PackedPeptide {
     fn partial_cmp(&self, other: &&[T]) -> Option<Ordering> {
         self.iter().map(RefCmp).partial_cmp(*other)
+    }
+}
+
+impl PartialEq<&str> for PackedPeptide {
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl PartialEq<str> for PackedPeptide {
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
     }
 }
 
@@ -563,6 +576,24 @@ where
     }
 }
 
+impl<const N: usize> PartialEq<&str> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, rhs: &&str) -> bool {
+        self == *rhs
+    }
+}
+
+impl<const N: usize> PartialEq<str> for PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    fn eq(&self, rhs: &str) -> bool {
+        self.iter().map(Ok).eq(iter_symbols(rhs))
+    }
+}
+
 impl<const N: usize> std::fmt::Display for PackedArrayPeptide<N>
 where
     [(); N]: PackableArray,
@@ -829,6 +860,14 @@ mod tests {
         let peptide = Amino::seq(b"PEPTIDE").pack();
         assert_eq!(Seq(Vec::from_iter(&peptide)), "PEPTIDE");
         assert_eq!(Seq(Vec::from_iter(peptide)), "PEPTIDE");
+    }
+
+    #[test]
+    fn packed_peptide_eq_str() {
+        let dna = Amino::seq(b"PEPTIDE")[..].pack();
+        assert_eq!(dna, "PEPTIDE");
+        let dna = Amino::seq(b"PEPTIDE").pack();
+        assert_eq!(dna, "PEPTIDE");
     }
 
     #[test]
