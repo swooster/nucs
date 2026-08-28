@@ -1,7 +1,9 @@
 //! Types related to packed ambiguous DNA.
 
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt::Formatter;
+use std::ops::{Deref, DerefMut};
 
 use crate::symbol::iter_symbols;
 use crate::{AmbiNuc, Seq, iter::display};
@@ -50,6 +52,28 @@ impl PackedAmbiDna {
     /// Returns an iterator over the packed DNA.
     #[must_use]
     pub fn iter(&self) -> PackedAmbiDnaIter<'_> {
+        self.into_iter()
+    }
+
+    /// Returns a mutable iterator over the packed DNA.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::AmbiDna;
+    ///
+    /// let dna: AmbiDna = "VTYNGTA".parse()?;
+    /// let mut packed = dna.pack();
+    /// for mut nuc in &mut packed {
+    ///     *nuc = nuc.complement();
+    /// }
+    /// assert_eq!(packed, "BARNCAT");
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn iter_mut(&mut self) -> PackedAmbiDnaMutIter<'_> {
         self.into_iter()
     }
 }
@@ -108,6 +132,17 @@ impl<'a> IntoIterator for &'a PackedAmbiDna {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedAmbiDnaIter(UnpackingIter::new(0..self.len(), &self.0))
+    }
+}
+
+impl<'a> IntoIterator for &'a mut PackedAmbiDna {
+    type Item = PackedAmbiNuc<'a>;
+    type IntoIter = PackedAmbiDnaMutIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let len = self.len();
+        let backing = Cell::from_mut(self.0.as_mut_slice()).as_slice_of_cells();
+        PackedAmbiDnaMutIter(UnpackingIter::new(0..len, backing))
     }
 }
 
@@ -297,6 +332,25 @@ where
     pub fn iter(&self) -> PackedAmbiDnaIter<'_> {
         self.into_iter()
     }
+
+    /// Returns a mutable iterator over the packed DNA.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::AmbiNuc;
+    ///
+    /// let dna = AmbiNuc::seq(b"VTYNGTA");
+    /// let mut packed = dna.pack();
+    /// for mut nuc in &mut packed {
+    ///     *nuc = nuc.complement();
+    /// }
+    /// assert_eq!(packed, "BARNCAT");
+    /// ```
+    #[must_use]
+    pub fn iter_mut(&mut self) -> PackedAmbiDnaMutIter<'_> {
+        self.into_iter()
+    }
 }
 
 impl<const N: usize> Default for PackedArrayAmbiDna<N>
@@ -393,6 +447,19 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedAmbiDnaIter(UnpackingIter::new(0..N, self.0.as_ref()))
+    }
+}
+
+impl<'a, const N: usize> IntoIterator for &'a mut PackedArrayAmbiDna<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = PackedAmbiNuc<'a>;
+    type IntoIter = PackedAmbiDnaMutIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let backing = Cell::from_mut(self.0.as_mut()).as_slice_of_cells();
+        PackedAmbiDnaMutIter(UnpackingIter::new(0..N, backing))
     }
 }
 
@@ -808,6 +875,130 @@ impl std::fmt::Debug for PackedAmbiDnaIter<'_> {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         f.debug_tuple("PackedAmbiDnaIter")
             .field(&display(self.clone()))
+            .finish()
+    }
+}
+
+/// Mutably borrowed packed ambiguous DNA iterator.
+///
+/// Created via [`PackedAmbiDna::iter_mut`] and [`PackedArrayAmbiDna::iter_mut`].
+pub struct PackedAmbiDnaMutIter<'a>(UnpackingIter<4, 8, std::slice::Iter<'a, Cell<u8>>>);
+
+impl PackedAmbiDnaMutIter<'_> {
+    // Create temporary iterator over remaining values without consuming this iter.
+    fn read_values(&self) -> impl Iterator<Item = AmbiNuc> + Clone {
+        self.0
+            .clone()
+            .map(|(shift, byte)| AmbiNuc::decompress(byte.get() >> shift))
+    }
+}
+
+impl<'a> Iterator for PackedAmbiDnaMutIter<'a> {
+    type Item = PackedAmbiNuc<'a>;
+
+    fn next(&mut self) -> Option<PackedAmbiNuc<'a>> {
+        self.0.next().map(PackedAmbiNuc::new)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<'a> DoubleEndedIterator for PackedAmbiDnaMutIter<'a> {
+    fn next_back(&mut self) -> Option<PackedAmbiNuc<'a>> {
+        self.0.next_back().map(PackedAmbiNuc::new)
+    }
+}
+
+impl ExactSizeIterator for PackedAmbiDnaMutIter<'_> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl std::fmt::Display for PackedAmbiDnaMutIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        display(self.read_values()).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmbiDnaMutIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmbiDnaMutIter")
+            .field(&display(self.read_values()))
+            .finish()
+    }
+}
+
+/// Mutable reference to packed [`AmbiNuc`].
+///
+/// Yielded by [`PackedAmbiDnaMutIter`].
+///
+/// # Leaking
+///
+/// If the [`PackedAmbiNuc`] goes out of scope without being dropped (due to [`std::mem::forget`],
+/// for example), changes to the [`AmbiNuc`] may fail to be persisted.
+pub struct PackedAmbiNuc<'a> {
+    packed: &'a Cell<u8>,
+    shift: u8,
+    unpacked: AmbiNuc,
+}
+
+impl<'a> PackedAmbiNuc<'a> {
+    fn new((shift, packed): (u8, &'a Cell<u8>)) -> Self {
+        let unpacked = AmbiNuc::decompress(packed.get() >> shift);
+        Self {
+            packed,
+            shift,
+            unpacked,
+        }
+    }
+}
+
+impl Drop for PackedAmbiNuc<'_> {
+    fn drop(&mut self) {
+        self.packed
+            .update(|p| p & !(0b1111 << self.shift) | self.unpacked.compress() << self.shift);
+    }
+}
+
+impl Deref for PackedAmbiNuc<'_> {
+    type Target = AmbiNuc;
+
+    fn deref(&self) -> &AmbiNuc {
+        &self.unpacked
+    }
+}
+
+impl DerefMut for PackedAmbiNuc<'_> {
+    fn deref_mut(&mut self) -> &mut AmbiNuc {
+        &mut self.unpacked
+    }
+}
+
+impl AsRef<AmbiNuc> for PackedAmbiNuc<'_> {
+    fn as_ref(&self) -> &AmbiNuc {
+        self
+    }
+}
+
+impl AsMut<AmbiNuc> for PackedAmbiNuc<'_> {
+    fn as_mut(&mut self) -> &mut AmbiNuc {
+        self
+    }
+}
+
+impl std::fmt::Display for PackedAmbiNuc<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.unpacked.fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmbiNuc<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmbiNuc")
+            .field(&self.unpacked)
             .finish()
     }
 }
