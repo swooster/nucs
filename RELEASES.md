@@ -1,6 +1,6 @@
 # Releases
 
-## Unreleased
+## Version 0.4.2 (2026-08-28)
 
 * Packed types now support comparison to slices, arrays and `Vec`s, strings
   and each other. (#79, #80, #81)
