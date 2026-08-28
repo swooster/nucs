@@ -438,6 +438,33 @@ impl<const N: usize> From<&PackedArrayAmbiPeptide<N>> for [AmbiAmino; N] {
     }
 }
 
+impl<'a, const N: usize> IntoIterator for &'a PackedArrayAmbiPeptide<N> {
+    type Item = AmbiAmino;
+    type IntoIter = PackedAmbiPeptideIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedAmbiPeptideIter(self.0.iter())
+    }
+}
+
+impl<'a, const N: usize> IntoIterator for &'a mut PackedArrayAmbiPeptide<N> {
+    type Item = PackedAmbiAmino<'a>;
+    type IntoIter = PackedAmbiPeptideMutIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedAmbiPeptideMutIter(self.0.iter_mut())
+    }
+}
+
+impl<const N: usize> IntoIterator for PackedArrayAmbiPeptide<N> {
+    type Item = AmbiAmino;
+    type IntoIter = PackedArrayAmbiPeptideIntoIter<N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        PackedArrayAmbiPeptideIntoIter(self.0.into_iter())
+    }
+}
+
 impl<const N: usize> PartialEq<PackedAmbiPeptide> for PackedArrayAmbiPeptide<N> {
     fn eq(&self, other: &PackedAmbiPeptide) -> bool {
         other == self
@@ -588,33 +615,6 @@ impl<const N: usize> std::fmt::Debug for PackedArrayAmbiPeptide<N> {
         f.debug_tuple("PackedArrayAmbiPeptide")
             .field(&display(self.iter()))
             .finish()
-    }
-}
-
-impl<'a, const N: usize> IntoIterator for &'a PackedArrayAmbiPeptide<N> {
-    type Item = AmbiAmino;
-    type IntoIter = PackedAmbiPeptideIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        PackedAmbiPeptideIter(self.0.iter())
-    }
-}
-
-impl<'a, const N: usize> IntoIterator for &'a mut PackedArrayAmbiPeptide<N> {
-    type Item = PackedAmbiAmino<'a>;
-    type IntoIter = PackedAmbiPeptideMutIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        PackedAmbiPeptideMutIter(self.0.iter_mut())
-    }
-}
-
-impl<const N: usize> IntoIterator for PackedArrayAmbiPeptide<N> {
-    type Item = AmbiAmino;
-    type IntoIter = PackedArrayAmbiPeptideIntoIter<N>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        PackedArrayAmbiPeptideIntoIter(self.0.into_iter())
     }
 }
 
