@@ -56,6 +56,84 @@ impl PackedDna {
         matches!(&*self.0, [] | [0])
     }
 
+    /// Appends a [`Nuc`] to the back of the DNA.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new length exceeds [`isize::MAX`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{Dna, Nuc};
+    ///
+    /// let dna: Dna = "CAT".parse()?;
+    /// let mut packed = dna.pack();
+    /// packed.push(Nuc::T);
+    /// packed.push(Nuc::A);
+    /// packed.push(Nuc::G);
+    /// assert_eq!(packed, "CATTAG");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn push(&mut self, nuc: Nuc) {
+        assert_ne!(self.len(), isize::MAX as usize);
+        match &mut *self.0 {
+            [] => self.0.push(nuc.compress() << 6 | 1),
+            [.., last] => {
+                let len = *last & 0b11;
+                let offset = 6 - 2 * len;
+                *last = *last & !(0b11 << offset) | (nuc.compress() << offset);
+                if len == 3 {
+                    self.0.push(0);
+                } else {
+                    *last += 1;
+                }
+            }
+        }
+    }
+
+    /// Removes the last [`Nuc`] from the DNA and returns it, or [`None`] if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{Dna, Nuc};
+    ///
+    /// let dna: Dna = "CAT".parse()?;
+    /// let mut packed = dna.pack();
+    /// assert_eq!(packed.pop(), Some(Nuc::T));
+    /// assert_eq!(packed.pop(), Some(Nuc::A));
+    /// assert_eq!(packed.pop(), Some(Nuc::C));
+    /// assert_eq!(packed.pop(), None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn pop(&mut self) -> Option<Nuc> {
+        match &mut *self.0 {
+            [] | [0] => None,
+            [.., last, 0] => {
+                let nuc = Nuc::decompress(*last);
+                *last = *last & !0b11 | 3;
+                self.0.pop();
+                Some(nuc)
+            }
+            [.., last] => {
+                let len = *last & 0b11;
+                let offset = 8 - 2 * len;
+                let nuc = Nuc::decompress(*last >> offset);
+                *last &= !(0b11 << offset);
+                *last -= 1;
+                if let [0] = &*self.0 {
+                    self.0.clear(); // normalize [0] to []
+                }
+                Some(nuc)
+            }
+        }
+    }
+
     /// Returns an iterator over the packed DNA.
     #[must_use]
     pub fn iter(&self) -> PackedDnaIter<'_> {
@@ -1235,6 +1313,24 @@ mod tests {
             let packed1 = PackedArrayDna::from(&dna1);
             assert_eq!(packed1.partial_cmp(&dna2), dna1.as_slice().partial_cmp(&dna2));
             assert_eq!(packed1.eq(&dna2), dna1.as_slice().eq(&dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn push_and_pop(
+            mut dna in any_dna(0..25),
+            ops in proptest::collection::vec(any::<Option<Nuc>>(), 0..50),
+        ) {
+            let mut packed = PackedDna::from(&dna);
+            for op in ops {
+                if let Some(nuc) = op {
+                    packed.push(nuc);
+                    dna.push(nuc);
+                } else {
+                    assert_eq!(packed.pop(), dna.pop());
+                }
+                assert_eq!(packed, dna);
+            }
         }
     }
 }
