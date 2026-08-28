@@ -42,6 +42,53 @@ impl PackedAmbiPeptide {
         self.0.is_empty()
     }
 
+    /// Appends an [`AmbiAmino`] to the back of the peptide.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new length exceeds [`isize::MAX`]`/4`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{AmbiAmino, AmbiPeptide};
+    ///
+    /// let ambi_peptide: AmbiPeptide = "AMBI*PEPT".parse()?;
+    /// let mut packed = ambi_peptide.pack();
+    /// packed.push(AmbiAmino::I);
+    /// packed.push(AmbiAmino::D);
+    /// packed.push(AmbiAmino::E);
+    /// assert_eq!(packed, "AMBI*PEPTIDE");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn push(&mut self, ambi_amino: AmbiAmino) {
+        assert_ne!(self.len(), isize::MAX as usize / 4);
+        self.0.push(ambi_amino.compress());
+    }
+
+    /// Removes the last [`AmbiAmino`] from the peptide and returns it, or [`None`] if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{AmbiAmino, AmbiPeptide};
+    ///
+    /// let peptide: AmbiPeptide = "BET".parse()?;
+    /// let mut packed = peptide.pack();
+    /// assert_eq!(packed.pop(), Some(AmbiAmino::T));
+    /// assert_eq!(packed.pop(), Some(AmbiAmino::E));
+    /// assert_eq!(packed.pop(), Some(AmbiAmino::B));
+    /// assert_eq!(packed.pop(), None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn pop(&mut self) -> Option<AmbiAmino> {
+        self.0.pop().map(AmbiAmino::decompress)
+    }
+
     /// Returns an iterator over the packed peptide.
     #[must_use]
     pub fn iter(&self) -> PackedAmbiPeptideIter<'_> {

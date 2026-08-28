@@ -49,6 +49,68 @@ impl PackedAmbiDna {
         self.0.is_empty()
     }
 
+    /// Appends an [`AmbiNuc`] to the back of the DNA.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new length exceeds [`isize::MAX`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{AmbiDna, AmbiNuc};
+    ///
+    /// let dna: AmbiDna = "BARN".parse()?;
+    /// let mut packed = dna.pack();
+    /// packed.push(AmbiNuc::C);
+    /// packed.push(AmbiNuc::A);
+    /// packed.push(AmbiNuc::T);
+    /// assert_eq!(packed, "BARNCAT");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn push(&mut self, ambi_nuc: AmbiNuc) {
+        assert_ne!(self.len(), isize::MAX as usize);
+        match &mut *self.0 {
+            [.., last] if last.trailing_zeros() >= 4 => *last |= ambi_nuc.compress(),
+            _ => self.0.push(ambi_nuc.compress() << 4),
+        }
+    }
+
+    /// Removes the last [`AmbiNuc`] from the DNA and returns it, or [`None`] if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{AmbiDna, AmbiNuc};
+    ///
+    /// let dna: AmbiDna = "BAT".parse()?;
+    /// let mut packed = dna.pack();
+    /// assert_eq!(packed.pop(), Some(AmbiNuc::T));
+    /// assert_eq!(packed.pop(), Some(AmbiNuc::A));
+    /// assert_eq!(packed.pop(), Some(AmbiNuc::B));
+    /// assert_eq!(packed.pop(), None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn pop(&mut self) -> Option<AmbiNuc> {
+        match &mut *self.0 {
+            [] => None,
+            [.., last] if last.trailing_zeros() >= 4 => {
+                let ambi_nuc = AmbiNuc::decompress(*last >> 4);
+                self.0.pop();
+                Some(ambi_nuc)
+            }
+            [.., last] => {
+                let ambi_nuc = AmbiNuc::decompress(*last);
+                *last &= !0b1111;
+                Some(ambi_nuc)
+            }
+        }
+    }
+
     /// Returns an iterator over the packed DNA.
     #[must_use]
     pub fn iter(&self) -> PackedAmbiDnaIter<'_> {
@@ -1141,6 +1203,24 @@ mod tests {
             let packed1 = PackedArrayAmbiDna::from(&ambi_dna1);
             assert_eq!(packed1.partial_cmp(&ambi_dna2), ambi_dna1.as_slice().partial_cmp(&ambi_dna2));
             assert_eq!(packed1.eq(&ambi_dna2), ambi_dna1.as_slice().eq(&ambi_dna2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn push_and_pop(
+            mut ambi_dna in any_ambi_dna(0..25),
+            ops in proptest::collection::vec(any::<Option<AmbiNuc>>(), 0..50),
+        ) {
+            let mut packed = PackedAmbiDna::from(&ambi_dna);
+            for op in ops {
+                if let Some(ambi_nuc) = op {
+                    packed.push(ambi_nuc);
+                    ambi_dna.push(ambi_nuc);
+                } else {
+                    assert_eq!(packed.pop(), ambi_dna.pop());
+                }
+                assert_eq!(packed, ambi_dna);
+            }
         }
     }
 }

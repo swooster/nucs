@@ -52,6 +52,69 @@ impl PackedPeptide {
         self.0.is_empty()
     }
 
+    /// Appends an [`Amino`] to the back of the peptide.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new length exceeds [`isize::MAX`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{Amino, Peptide};
+    ///
+    /// let peptide: Peptide = "PEPT".parse()?;
+    /// let mut packed = peptide.pack();
+    /// packed.push(Amino::I);
+    /// packed.push(Amino::D);
+    /// packed.push(Amino::E);
+    /// assert_eq!(packed, "PEPTIDE");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn push(&mut self, amino: Amino) {
+        assert_ne!(self.len(), isize::MAX as usize);
+        if let Some(last) = self.0.last_mut()
+            && let val = u16::from_be_bytes(*last)
+            && val.trailing_zeros() >= 5
+        {
+            let offset = val.trailing_zeros() / 5 * 5 - 5;
+            *last = (val | (amino.compress() << offset)).to_be_bytes();
+        } else {
+            self.0.push((amino.compress() << 10).to_be_bytes());
+        }
+    }
+
+    /// Removes the last [`Amino`] from the peptide and returns it, or [`None`] if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{Amino, Peptide};
+    ///
+    /// let peptide: Peptide = "PET".parse()?;
+    /// let mut packed = peptide.pack();
+    /// assert_eq!(packed.pop(), Some(Amino::T));
+    /// assert_eq!(packed.pop(), Some(Amino::E));
+    /// assert_eq!(packed.pop(), Some(Amino::P));
+    /// assert_eq!(packed.pop(), None);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn pop(&mut self) -> Option<Amino> {
+        let last = self.0.last_mut()?;
+        let val = u16::from_be_bytes(*last);
+        let offset = val.trailing_zeros() / 5 * 5;
+        if offset == 10 {
+            self.0.pop();
+        } else {
+            *last = (val & !(0b11111 << offset)).to_be_bytes();
+        }
+        Some(Amino::decompress(val >> offset))
+    }
+
     /// Returns an iterator over the packed peptide.
     #[must_use]
     pub fn iter(&self) -> PackedPeptideIter<'_> {
@@ -1167,6 +1230,24 @@ mod tests {
             let packed1 = PackedArrayPeptide::from(&peptide1);
             assert_eq!(packed1.partial_cmp(&peptide2), peptide1.as_slice().partial_cmp(&peptide2));
             assert_eq!(packed1.eq(&peptide2), peptide1.as_slice().eq(&peptide2));
+        }
+
+        #[cfg_attr(miri, ignore = "slow in miri; shouldn't touch unsafe code anyway")]
+        #[test]
+        fn push_and_pop(
+            mut peptide in any_peptide(0..25),
+            ops in proptest::collection::vec(any::<Option<Amino>>(), 0..50),
+        ) {
+            let mut packed = PackedPeptide::from(&peptide);
+            for op in ops {
+                if let Some(amino) = op {
+                    packed.push(amino);
+                    peptide.push(amino);
+                } else {
+                    assert_eq!(packed.pop(), peptide.pop());
+                }
+                assert_eq!(packed, peptide);
+            }
         }
     }
 }

@@ -5,6 +5,7 @@
 * Packed types now support comparison to slices, arrays and `Vec`s, strings
   and each other. (#79, #80, #81)
 * Packed types now support mutable iteration. (#82)
+* Packed vec-like types now support `push` and `pop`. (#83)
 
 ## Version 0.4.1 (2026-08-13)
 
