@@ -1,7 +1,9 @@
 //! Types related to packed ambiguous peptides.
 
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt::Formatter;
+use std::ops::{Deref, DerefMut};
 
 use crate::symbol::iter_symbols;
 use crate::{Amino, Seq, iter::display};
@@ -53,6 +55,32 @@ impl PackedPeptide {
     /// Returns an iterator over the packed peptide.
     #[must_use]
     pub fn iter(&self) -> PackedPeptideIter<'_> {
+        self.into_iter()
+    }
+
+    /// Returns a mutable iterator over the packed peptide.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::{Amino, Peptide};
+    ///
+    /// let peptide: Peptide = "REPTILE".parse()?;
+    /// let mut packed = peptide.pack();
+    /// for mut amino in &mut packed {
+    ///     *amino = match *amino {
+    ///         Amino::R => Amino::P,
+    ///         Amino::L => Amino::D,
+    ///         aa => aa,
+    ///     }
+    /// }
+    /// assert_eq!(packed, "PEPTIDE");
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn iter_mut(&mut self) -> PackedPeptideMutIter<'_> {
         self.into_iter()
     }
 }
@@ -111,6 +139,17 @@ impl<'a> IntoIterator for &'a PackedPeptide {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedPeptideIter(UnpackingIter::new(0..self.len(), &self.0))
+    }
+}
+
+impl<'a> IntoIterator for &'a mut PackedPeptide {
+    type Item = PackedAmino<'a>;
+    type IntoIter = PackedPeptideMutIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let len = self.len();
+        let backing = Cell::from_mut(self.0.as_mut_slice()).as_slice_of_cells();
+        PackedPeptideMutIter(UnpackingIter::new(0..len, backing))
     }
 }
 
@@ -296,6 +335,29 @@ where
     pub fn iter(&self) -> PackedPeptideIter<'_> {
         self.into_iter()
     }
+
+    /// Returns a mutable iterator over the packed peptide.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::Amino;
+    ///
+    /// let dna = Amino::seq(b"REPTILE");
+    /// let mut packed = dna.pack();
+    /// for mut amino in &mut packed {
+    ///     *amino = match *amino {
+    ///         Amino::R => Amino::P,
+    ///         Amino::L => Amino::D,
+    ///         aa => aa,
+    ///     }
+    /// }
+    /// assert_eq!(packed, "PEPTIDE");
+    /// ```
+    #[must_use]
+    pub fn iter_mut(&mut self) -> PackedPeptideMutIter<'_> {
+        self.into_iter()
+    }
 }
 
 impl<const N: usize> Default for PackedArrayPeptide<N>
@@ -392,6 +454,19 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedPeptideIter(UnpackingIter::new(0..N, self.0.as_ref()))
+    }
+}
+
+impl<'a, const N: usize> IntoIterator for &'a mut PackedArrayPeptide<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = PackedAmino<'a>;
+    type IntoIter = PackedPeptideMutIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let backing = Cell::from_mut(self.0.as_mut()).as_slice_of_cells();
+        PackedPeptideMutIter(UnpackingIter::new(0..N, backing))
     }
 }
 
@@ -818,6 +893,131 @@ impl std::fmt::Debug for PackedPeptideIter<'_> {
         f.debug_tuple("PackedPeptideIter")
             .field(&display(self.clone()))
             .finish()
+    }
+}
+
+/// Mutably borrowed packed peptide iterator.
+///
+/// Created via [`PackedPeptide::iter_mut`] and [`PackedArrayPeptide::iter_mut`].
+pub struct PackedPeptideMutIter<'a>(UnpackingIter<5, 15, std::slice::Iter<'a, Cell<[u8; 2]>>>);
+
+impl PackedPeptideMutIter<'_> {
+    // Create temporary iterator over remaining values without consuming this iter.
+    fn read_values(&self) -> impl Iterator<Item = Amino> + Clone {
+        self.0
+            .clone()
+            .map(|(shift, bytes)| Amino::decompress(u16::from_be_bytes(bytes.get()) >> shift))
+    }
+}
+
+impl<'a> Iterator for PackedPeptideMutIter<'a> {
+    type Item = PackedAmino<'a>;
+
+    fn next(&mut self) -> Option<PackedAmino<'a>> {
+        self.0.next().map(PackedAmino::new)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<'a> DoubleEndedIterator for PackedPeptideMutIter<'a> {
+    fn next_back(&mut self) -> Option<PackedAmino<'a>> {
+        self.0.next_back().map(PackedAmino::new)
+    }
+}
+
+impl ExactSizeIterator for PackedPeptideMutIter<'_> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl std::fmt::Display for PackedPeptideMutIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        display(self.read_values()).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedPeptideMutIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedPeptideMutIter")
+            .field(&display(self.read_values()))
+            .finish()
+    }
+}
+
+/// Mutable reference to packed [`Amino`].
+///
+/// Yielded by [`PackedPeptideMutIter`].
+///
+/// # Leaking
+///
+/// If the [`PackedAmino`] goes out of scope without being dropped (due to [`std::mem::forget`],
+/// for example), changes to the [`Amino`] may fail to be persisted.
+pub struct PackedAmino<'a> {
+    packed: &'a Cell<[u8; 2]>,
+    shift: u8,
+    unpacked: Amino,
+}
+
+impl<'a> PackedAmino<'a> {
+    fn new((shift, packed): (u8, &'a Cell<[u8; 2]>)) -> Self {
+        let unpacked = Amino::decompress(u16::from_be_bytes(packed.get()) >> shift);
+        Self {
+            packed,
+            shift,
+            unpacked,
+        }
+    }
+}
+
+impl Drop for PackedAmino<'_> {
+    fn drop(&mut self) {
+        self.packed.update(|bytes| {
+            let updated = u16::from_be_bytes(bytes) & !(0b11111 << self.shift)
+                | self.unpacked.compress() << self.shift;
+            updated.to_be_bytes()
+        });
+    }
+}
+
+impl Deref for PackedAmino<'_> {
+    type Target = Amino;
+
+    fn deref(&self) -> &Amino {
+        &self.unpacked
+    }
+}
+
+impl DerefMut for PackedAmino<'_> {
+    fn deref_mut(&mut self) -> &mut Amino {
+        &mut self.unpacked
+    }
+}
+
+impl AsRef<Amino> for PackedAmino<'_> {
+    fn as_ref(&self) -> &Amino {
+        self
+    }
+}
+
+impl AsMut<Amino> for PackedAmino<'_> {
+    fn as_mut(&mut self) -> &mut Amino {
+        self
+    }
+}
+
+impl std::fmt::Display for PackedAmino<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.unpacked.fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedAmino<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedAmino").field(&self.unpacked).finish()
     }
 }
 

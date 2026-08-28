@@ -1,8 +1,10 @@
 //! Types related to packed DNA.
 
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt::Formatter;
 use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 
 use crate::symbol::iter_symbols;
 use crate::{Nuc, Seq, iter::display};
@@ -57,6 +59,28 @@ impl PackedDna {
     /// Returns an iterator over the packed DNA.
     #[must_use]
     pub fn iter(&self) -> PackedDnaIter<'_> {
+        self.into_iter()
+    }
+
+    /// Returns a mutable iterator over the packed DNA.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use nucs::Dna;
+    ///
+    /// let dna: Dna = "ACATATTAC".parse()?;
+    /// let mut packed = dna.pack();
+    /// for mut nuc in &mut packed {
+    ///     *nuc = nuc.complement();
+    /// }
+    /// assert_eq!(packed, "TGTATAATG");
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn iter_mut(&mut self) -> PackedDnaMutIter<'_> {
         self.into_iter()
     }
 }
@@ -122,6 +146,17 @@ impl<'a> IntoIterator for &'a PackedDna {
 
     fn into_iter(self) -> Self::IntoIter {
         PackedDnaIter(UnpackingIter::new(0..self.len(), &self.0))
+    }
+}
+
+impl<'a> IntoIterator for &'a mut PackedDna {
+    type Item = PackedNuc<'a>;
+    type IntoIter = PackedDnaMutIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let len = self.len();
+        let backing = Cell::from_mut(self.0.as_mut_slice()).as_slice_of_cells();
+        PackedDnaMutIter(UnpackingIter::new(0..len, backing))
     }
 }
 
@@ -362,6 +397,25 @@ where
     pub fn iter(&self) -> PackedDnaIter<'_> {
         self.into_iter()
     }
+
+    /// Returns a mutable iterator over the packed DNA.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use nucs::Nuc;
+    ///
+    /// let dna = Nuc::seq(b"ACATATTAC");
+    /// let mut packed = dna.pack();
+    /// for mut nuc in &mut packed {
+    ///     *nuc = nuc.complement();
+    /// }
+    /// assert_eq!(packed, "TGTATAATG");
+    /// ```
+    #[must_use]
+    pub fn iter_mut(&mut self) -> PackedDnaMutIter<'_> {
+        self.into_iter()
+    }
 }
 
 impl<const N: usize> Default for PackedArrayDna<N>
@@ -458,6 +512,19 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         PackedDnaIter(UnpackingIter::new(0..N, self.0.as_ref()))
+    }
+}
+
+impl<'a, const N: usize> IntoIterator for &'a mut PackedArrayDna<N>
+where
+    [(); N]: PackableArray,
+{
+    type Item = PackedNuc<'a>;
+    type IntoIter = PackedDnaMutIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let backing = Cell::from_mut(self.0.as_mut()).as_slice_of_cells();
+        PackedDnaMutIter(UnpackingIter::new(0..N, backing))
     }
 }
 
@@ -876,6 +943,128 @@ impl std::fmt::Debug for PackedDnaIter<'_> {
         f.debug_tuple("PackedDnaIter")
             .field(&display(self.clone()))
             .finish()
+    }
+}
+
+/// Mutably borrowed packed DNA iterator.
+///
+/// Created via [`PackedDna::iter_mut`] and [`PackedArrayDna::iter_mut`].
+pub struct PackedDnaMutIter<'a>(UnpackingIter<2, 8, std::slice::Iter<'a, Cell<u8>>>);
+
+impl PackedDnaMutIter<'_> {
+    // Create temporary iterator over remaining values without consuming this iter.
+    fn read_values(&self) -> impl Iterator<Item = Nuc> + Clone {
+        self.0
+            .clone()
+            .map(|(shift, byte)| Nuc::decompress(byte.get() >> shift))
+    }
+}
+
+impl<'a> Iterator for PackedDnaMutIter<'a> {
+    type Item = PackedNuc<'a>;
+
+    fn next(&mut self) -> Option<PackedNuc<'a>> {
+        self.0.next().map(PackedNuc::new)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<'a> DoubleEndedIterator for PackedDnaMutIter<'a> {
+    fn next_back(&mut self) -> Option<PackedNuc<'a>> {
+        self.0.next_back().map(PackedNuc::new)
+    }
+}
+
+impl ExactSizeIterator for PackedDnaMutIter<'_> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl std::fmt::Display for PackedDnaMutIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        display(self.read_values()).fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedDnaMutIter<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedDnaMutIter")
+            .field(&display(self.read_values()))
+            .finish()
+    }
+}
+
+/// Mutable reference to packed [`Nuc`].
+///
+/// Yielded by [`PackedDnaMutIter`].
+///
+/// # Leaking
+///
+/// If the [`PackedNuc`] goes out of scope without being dropped (due to [`std::mem::forget`],
+/// for example), changes to the [`Nuc`] may fail to be persisted.
+pub struct PackedNuc<'a> {
+    packed: &'a Cell<u8>,
+    shift: u8,
+    unpacked: Nuc,
+}
+
+impl<'a> PackedNuc<'a> {
+    fn new((shift, packed): (u8, &'a Cell<u8>)) -> Self {
+        let unpacked = Nuc::decompress(packed.get() >> shift);
+        Self {
+            packed,
+            shift,
+            unpacked,
+        }
+    }
+}
+
+impl Drop for PackedNuc<'_> {
+    fn drop(&mut self) {
+        self.packed
+            .update(|p| p & !(0b11 << self.shift) | self.unpacked.compress() << self.shift);
+    }
+}
+
+impl Deref for PackedNuc<'_> {
+    type Target = Nuc;
+
+    fn deref(&self) -> &Nuc {
+        &self.unpacked
+    }
+}
+
+impl DerefMut for PackedNuc<'_> {
+    fn deref_mut(&mut self) -> &mut Nuc {
+        &mut self.unpacked
+    }
+}
+
+impl AsRef<Nuc> for PackedNuc<'_> {
+    fn as_ref(&self) -> &Nuc {
+        self
+    }
+}
+
+impl AsMut<Nuc> for PackedNuc<'_> {
+    fn as_mut(&mut self) -> &mut Nuc {
+        self
+    }
+}
+
+impl std::fmt::Display for PackedNuc<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        self.unpacked.fmt(f)
+    }
+}
+
+impl std::fmt::Debug for PackedNuc<'_> {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        f.debug_tuple("PackedNuc").field(&self.unpacked).finish()
     }
 }
 
