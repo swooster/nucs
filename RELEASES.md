@@ -3,6 +3,7 @@
 ## Unreleased
 
 * Remove `Nucleotide::translate` and `Nucleotide::translate_rc`. (#86)
+* Rename `GeneticCode::translate{,_rc}` to `GeneticCode::translate{,_rc}_codon`. (#87)
 
 ## Version 0.4.2 (2026-08-28)
 
