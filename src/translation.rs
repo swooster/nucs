@@ -25,7 +25,14 @@ pub trait GeneticCode {
     /// assert_eq!(genetic_code.translate([AmbiNuc::N; 3]), AmbiAmino::W);
     /// ```
     fn translate<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
-        N::translate(self, codon)
+        // NOTE: This code is optimized away, simply delegating to the appropriate method.
+        if let (Some(cast_amino), Some(cast_codon)) = (cast(), cast()) {
+            return cast_amino(self.translate_concrete_codon(cast_codon(codon)));
+        }
+        if let (Some(cast_amino), Some(cast_codon)) = (cast(), cast()) {
+            return cast_amino(self.translate_ambiguous_codon(cast_codon(codon)));
+        }
+        unreachable!("BUG: translated unknown nucleotide type")
     }
 
     /// Translate reverse complement of a codon to an amino acid
@@ -45,7 +52,14 @@ pub trait GeneticCode {
     /// assert_eq!(genetic_code.translate_rc(AmbiNuc::arr(b"ANT")), AmbiAmino::Stop);
     /// ```
     fn translate_rc<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
-        N::translate_rc(self, codon)
+        // NOTE: This code is optimized away, simply delegating to the appropriate method.
+        if let (Some(cast_amino), Some(cast_codon)) = (cast(), cast()) {
+            return cast_amino(self.translate_rc_concrete_codon(cast_codon(codon)));
+        }
+        if let (Some(cast_amino), Some(cast_codon)) = (cast(), cast()) {
+            return cast_amino(self.translate_rc_ambiguous_codon(cast_codon(codon)));
+        }
+        unreachable!("BUG: translated unknown nucleotide type")
     }
 
     /// Translate a concrete codon to an amino acid
@@ -88,6 +102,14 @@ pub trait GeneticCode {
         codon.complement();
         self.translate_ambiguous_codon(codon)
     }
+}
+
+/// Return `fn(T) -> U` identity function iff `T == U`.
+///
+/// This helps with writing special cases for generics and gets optimized away.
+fn cast<T: 'static, U: 'static>() -> Option<fn(T) -> U> {
+    let id: fn(T) -> T = |t| t;
+    (&id as &dyn std::any::Any).downcast_ref().copied()
 }
 
 impl<F: Fn([Nuc; 3]) -> Amino> GeneticCode for F {
