@@ -21,10 +21,10 @@ pub trait GeneticCode {
     /// use nucs::{AmbiAmino, Amino, AmbiNuc, Nuc, translation::GeneticCode};
     ///
     /// let genetic_code = |_codon| Amino::W; // translate everything to tryptophan
-    /// assert_eq!(genetic_code.translate([Nuc::A; 3]), Amino::W);
-    /// assert_eq!(genetic_code.translate([AmbiNuc::N; 3]), AmbiAmino::W);
+    /// assert_eq!(genetic_code.translate_codon([Nuc::A; 3]), Amino::W);
+    /// assert_eq!(genetic_code.translate_codon([AmbiNuc::N; 3]), AmbiAmino::W);
     /// ```
-    fn translate<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
+    fn translate_codon<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
         // NOTE: This code is optimized away, simply delegating to the appropriate method.
         if let (Some(cast_amino), Some(cast_codon)) = (cast(), cast()) {
             return cast_amino(self.translate_concrete_codon(cast_codon(codon)));
@@ -47,11 +47,11 @@ pub trait GeneticCode {
     ///    [A, T, G] => Amino::W,
     ///    _ => Amino::Stop,
     /// };
-    /// assert_eq!(genetic_code.translate_rc(Nuc::arr(b"CAT")), Amino::W);
-    /// assert_eq!(genetic_code.translate_rc(AmbiNuc::arr(b"CAT")), AmbiAmino::W);
-    /// assert_eq!(genetic_code.translate_rc(AmbiNuc::arr(b"ANT")), AmbiAmino::Stop);
+    /// assert_eq!(genetic_code.translate_rc_codon(Nuc::arr(b"CAT")), Amino::W);
+    /// assert_eq!(genetic_code.translate_rc_codon(AmbiNuc::arr(b"CAT")), AmbiAmino::W);
+    /// assert_eq!(genetic_code.translate_rc_codon(AmbiNuc::arr(b"ANT")), AmbiAmino::Stop);
     /// ```
-    fn translate_rc<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
+    fn translate_rc_codon<N: Nucleotide>(&self, codon: [N; 3]) -> N::Amino {
         // NOTE: This code is optimized away, simply delegating to the appropriate method.
         if let (Some(cast_amino), Some(cast_codon)) = (cast(), cast()) {
             return cast_amino(self.translate_rc_concrete_codon(cast_codon(codon)));
@@ -64,14 +64,14 @@ pub trait GeneticCode {
 
     /// Translate a concrete codon to an amino acid
     ///
-    /// Consider calling [`GeneticCode::translate`] instead; this primarily exists to be provided
-    /// by implementors of [`GeneticCode`].
+    /// Consider calling [`GeneticCode::translate_codon`] instead; this primarily exists to be
+    /// provided by implementors of [`GeneticCode`].
     fn translate_concrete_codon(&self, codon: [Nuc; 3]) -> Amino;
 
     /// Translate an ambiguous codon to an amino acid
     ///
-    /// Consider calling [`GeneticCode::translate`] instead; this primarily exists to be provided
-    /// by implementors of [`GeneticCode`].
+    /// Consider calling [`GeneticCode::translate_codon`] instead; this primarily exists to be
+    /// provided by implementors of [`GeneticCode`].
     fn translate_ambiguous_codon(&self, codon: [AmbiNuc; 3]) -> AmbiAmino {
         let [ambi_n1, ambi_n2, ambi_n3] = codon;
         ambi_n1
@@ -85,8 +85,8 @@ pub trait GeneticCode {
 
     /// Translate reverse complement of a concrete codon to an amino acid
     ///
-    /// Consider calling [`GeneticCode::translate_rc`] instead; this primarily exists to be provided
-    /// by implementors of [`GeneticCode`].
+    /// Consider calling [`GeneticCode::translate_rc_codon`] instead; this primarily exists to be
+    /// provided by implementors of [`GeneticCode`].
     fn translate_rc_concrete_codon(&self, mut codon: [Nuc; 3]) -> Amino {
         codon.reverse();
         codon.complement();
@@ -95,8 +95,8 @@ pub trait GeneticCode {
 
     /// Translate reverse complement of an ambiguous codon to an amino acid
     ///
-    /// Consider calling [`GeneticCode::translate_rc`] instead; this primarily exists to be provided
-    /// by implementors of [`GeneticCode`].
+    /// Consider calling [`GeneticCode::translate_rc_codon`] instead; this primarily exists to be
+    /// provided by implementors of [`GeneticCode`].
     fn translate_rc_ambiguous_codon(&self, mut codon: [AmbiNuc; 3]) -> AmbiAmino {
         codon.reverse();
         codon.complement();
@@ -152,7 +152,7 @@ impl FullLookup {
     pub fn from_genetic_code<G: GeneticCode>(genetic_code: &G) -> Self {
         Self::from_table(&std::array::from_fn(|i| {
             let codon = [4, 2, 0].map(|offset| Nuc::ALL[(i >> offset) & 0b11]);
-            genetic_code.translate(codon)
+            genetic_code.translate_codon(codon)
         }))
     }
 
@@ -305,10 +305,10 @@ impl ConcreteLookup {
     ///
     /// let table = Amino::arr(b"ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRS*");
     /// let lookup = ConcreteLookup::from_table(&table);
-    /// assert_eq!((&lookup).translate([A, T, G]), Amino::Q);
+    /// assert_eq!((&lookup).translate_codon([A, T, G]), Amino::Q);
     /// let lookup_rc = lookup.reverse_complement();
     /// // ATG reverse-complemented is CAT, so...
-    /// assert_eq!((&lookup_rc).translate([C, A, T]), Amino::Q);
+    /// assert_eq!((&lookup_rc).translate_codon([C, A, T]), Amino::Q);
     /// ```
     #[must_use]
     pub const fn reverse_complement(&self) -> Self {
@@ -437,10 +437,10 @@ impl AmbiLookup {
     ///
     /// let table = Amino::arr(b"ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRSTUVWY*ACDEFGHIKLMNOPQRS*");
     /// let lookup = ConcreteLookup::from_table(&table).to_ambi_lookup();
-    /// assert_eq!((&lookup).translate([A, T, G]), Amino::Q);
+    /// assert_eq!((&lookup).translate_codon([A, T, G]), Amino::Q);
     /// let lookup_rc = lookup.reverse_complement();
     /// // ATG reverse-complemented is CAT, so...
-    /// assert_eq!((&lookup_rc).translate([C, A, T]), Amino::Q);
+    /// assert_eq!((&lookup_rc).translate_codon([C, A, T]), Amino::Q);
     /// ```
     #[must_use]
     pub const fn reverse_complement(&self) -> Self {
@@ -505,7 +505,8 @@ fn fmt_genetic_code(
         for n2 in Nuc::ALL {
             for n3 in Nuc::ALL {
                 let codon = [n1, n2, n3];
-                map.entry(&codon.display(), &genetic_code.translate([n1, n2, n3]));
+                let amino = genetic_code.translate_codon([n1, n2, n3]);
+                map.entry(&codon.display(), &amino);
             }
         }
     }
@@ -804,11 +805,11 @@ impl<'a, N: Nucleotide, G: GeneticCode> Translation<'a, N, G> {
         let (amino_chunks, amino_remainder) = buf.as_chunks_mut::<CHUNK_LEN>();
         for (aminos, codons) in std::iter::zip(amino_chunks, codon_chunks) {
             for (amino, codon) in std::iter::zip(aminos, codons) {
-                *amino = self.genetic_code.translate(*codon);
+                *amino = self.genetic_code.translate_codon(*codon);
             }
         }
         for (amino, codon) in std::iter::zip(amino_remainder, codon_remainder) {
-            *amino = self.genetic_code.translate(*codon);
+            *amino = self.genetic_code.translate_codon(*codon);
         }
         Ok(())
     }
@@ -846,7 +847,7 @@ impl<'a, N: Nucleotide, G: GeneticCode> Translation<'a, N, G> {
         self.dna
             .iter()
             .codons()
-            .map(|c| self.genetic_code.translate(c))
+            .map(|c| self.genetic_code.translate_codon(c))
     }
 }
 
@@ -1101,11 +1102,11 @@ impl<N: Nucleotide, G: GeneticCode> RcTranslation<'_, N, G> {
         let (amino_remainder, amino_chunks) = buf.as_rchunks_mut::<CHUNK_LEN>();
         for (aminos, codons) in amino_chunks.iter_mut().rev().zip(codon_chunks) {
             for (amino, codon) in aminos.iter_mut().rev().zip(codons) {
-                *amino = self.genetic_code.translate_rc(*codon);
+                *amino = self.genetic_code.translate_rc_codon(*codon);
             }
         }
         for (amino, codon) in amino_remainder.iter_mut().rev().zip(codon_remainder) {
-            *amino = self.genetic_code.translate_rc(*codon);
+            *amino = self.genetic_code.translate_rc_codon(*codon);
         }
         Ok(())
     }
@@ -1144,7 +1145,7 @@ impl<N: Nucleotide, G: GeneticCode> RcTranslation<'_, N, G> {
             .iter()
             .reverse_complemented()
             .codons()
-            .map(|c| self.genetic_code.translate(c))
+            .map(|c| self.genetic_code.translate_codon(c))
     }
 }
 
@@ -1333,8 +1334,8 @@ mod tests {
                     let mut codon_rc = codon;
                     codon_rc.reverse_complement();
                     assert_eq!(
-                        NCBI1.translate_rc(codon),
-                        NCBI1.translate(codon_rc),
+                        NCBI1.translate_rc_codon(codon),
+                        NCBI1.translate_codon(codon_rc),
                         "Mismatch for {codon:?}"
                     );
                 }
@@ -1351,8 +1352,8 @@ mod tests {
                     let mut codon_rc = codon;
                     codon_rc.reverse_complement();
                     assert_eq!(
-                        NCBI1.translate_rc(codon),
-                        NCBI1.translate(codon_rc),
+                        NCBI1.translate_rc_codon(codon),
+                        NCBI1.translate_codon(codon_rc),
                         "Mismatch for {codon:?}"
                     );
                 }
@@ -1381,7 +1382,7 @@ mod tests {
             for n2 in Nuc::ALL {
                 for n3 in Nuc::ALL {
                     let codon = [n1, n2, n3];
-                    assert_eq!(g1.translate(codon), g2.translate(codon));
+                    assert_eq!(g1.translate_codon(codon), g2.translate_codon(codon));
                 }
             }
         }
@@ -1389,7 +1390,7 @@ mod tests {
             for n2 in AmbiNuc::ALL {
                 for n3 in AmbiNuc::ALL {
                     let codon = [n1, n2, n3];
-                    assert_eq!(g1.translate(codon), g2.translate(codon));
+                    assert_eq!(g1.translate_codon(codon), g2.translate_codon(codon));
                 }
             }
         }
